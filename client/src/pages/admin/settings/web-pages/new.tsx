@@ -1,0 +1,353 @@
+import React, { useEffect } from "react";
+import { useLocation } from "wouter";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation } from "@tanstack/react-query";
+import { queryClient } from "../../../../lib/queryClient";
+import { z } from "zod";
+import { insertWebPageSchema } from "../../../../lib/schema";
+
+import { Button } from "../../../../components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../../../../components/ui/card";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "../../../../components/ui/form";
+import { Input } from "../../../../components/ui/input";
+import { Textarea } from "../../../../components/ui/textarea";
+import { Switch } from "../../../../components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../components/ui/select";
+import { toast } from "../../../../hooks/use-toast";
+import { ArrowLeft, Save } from "lucide-react";
+
+// Estendi lo schema di inserimento con validazioni aggiuntive
+const formSchema = insertWebPageSchema.extend({
+  title: z.string().min(3, "Il titolo deve contenere almeno 3 caratteri").max(100, "Il titolo non può superare i 100 caratteri"),
+  slug: z.string().min(3, "Lo slug deve contenere almeno 3 caratteri").max(100, "Lo slug non può superare i 100 caratteri")
+    .regex(/^[a-z0-9-]+$/, "Lo slug può contenere solo lettere minuscole, numeri e trattini"),
+  content: z.string().min(10, "Il contenuto deve contenere almeno 10 caratteri"),
+  metaTitle: z.string().optional(),
+  metaDescription: z.string().optional(),
+  isHomepage: z.boolean().optional().default(false),
+  type: z.enum(["desktop", "mobile"]).default("desktop"),
+});
+
+export default function NewWebPage() {
+  const [, navigate] = useLocation();
+  
+  // Estrai il tipo dalla query string (desktop o mobile)
+  const urlParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+  const pageType = urlParams.get('type') === 'mobile' ? 'mobile' : 'desktop';
+  
+  // Configura il form con i valori predefiniti
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      title: "",
+      slug: "",
+      content: "",
+      metaTitle: "",
+      metaDescription: "",
+      type: pageType,
+      status: "draft",
+      isHomepage: false,
+    }
+  });
+  
+  // Effettua la chiamata API per creare la pagina
+  const createMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof formSchema>) => {
+      const response = await fetch("/api/admin/web-pages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(data)
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Si è verificato un errore durante la creazione della pagina");
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/web-pages"] });
+      toast({
+        title: "Pagina creata",
+        description: "La pagina è stata creata con successo",
+      });
+      navigate("/admin/settings/web-pages");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore",
+        description: error.message || "Si è verificato un errore durante la creazione della pagina",
+        variant: "destructive"
+      });
+    }
+  });
+  
+  // Genera automaticamente lo slug quando l'utente digita il titolo
+  const generateSlug = (title: string) => {
+    return title
+      .toLowerCase()
+      .replace(/\s+/g, '-')      // Sostituisci spazi con trattini
+      .replace(/[^\w-]+/g, '')   // Rimuovi caratteri non alfanumerici e non trattini
+      .replace(/--+/g, '-')      // Rimuovi più trattini consecutivi
+      .replace(/^-+/, '')        // Rimuovi trattini all'inizio
+      .replace(/-+$/, '');       // Rimuovi trattini alla fine
+  };
+  
+  // Aggiorna lo slug quando il titolo cambia
+  useEffect(() => {
+    const titleSubscription = form.watch((value, { name }) => {
+      if (name === 'title') {
+        const currentSlug = form.getValues('slug');
+        if (currentSlug === "" || currentSlug === generateSlug(form.getValues('title').replace(/.$/, ''))) {
+          form.setValue('slug', generateSlug(value.title as string), { shouldValidate: true });
+        }
+      }
+    });
+    
+    return () => titleSubscription.unsubscribe();
+  }, [form]);
+  
+  // Invia il form
+  const onSubmit = (data: z.infer<typeof formSchema>) => {
+    createMutation.mutate(data);
+  };
+
+  return (
+    <div className="p-6">
+      <div className="flex items-center mb-6">
+        <Button variant="ghost" onClick={() => navigate("/admin/settings/web-pages")} className="mr-4">
+          <ArrowLeft className="h-4 w-4 mr-2" /> Indietro
+        </Button>
+        <div>
+          <h1 className="text-2xl font-bold">Crea Nuova Pagina</h1>
+          <p className="text-gray-500">Crea una nuova pagina per il tuo sito web</p>
+        </div>
+      </div>
+
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Dettagli Pagina</CardTitle>
+              <CardDescription>
+                Inserisci le informazioni principali della pagina
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Titolo</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Titolo della pagina" {...field} />
+                      </FormControl>
+                      <FormDescription>
+                        Il titolo della pagina che verrà visualizzato
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="slug"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Slug</FormLabel>
+                      <FormControl>
+                        <Input placeholder="url-della-pagina" {...field} />
+                      </FormControl>
+                      <FormDescription>
+                        L'URL della pagina (generato automaticamente dal titolo)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tipo di pagina</FormLabel>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleziona il tipo di pagina" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="desktop">Desktop</SelectItem>
+                          <SelectItem value="mobile">Mobile</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        La versione del sito a cui appartiene questa pagina
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Stato</FormLabel>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleziona lo stato" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="draft">Bozza</SelectItem>
+                          <SelectItem value="published">Pubblicato</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        Solo le pagine pubblicate saranno visibili sul sito
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <FormField
+                control={form.control}
+                name="isHomepage"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">Imposta come homepage</FormLabel>
+                      <FormDescription>
+                        Se attivato, questa pagina sarà l'homepage per il tipo selezionato (desktop o mobile)
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="content"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Contenuto</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Inserisci il contenuto della pagina..." 
+                        className="min-h-[200px]" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Puoi utilizzare HTML per formattare il contenuto
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>SEO</CardTitle>
+              <CardDescription>
+                Informazioni per l'ottimizzazione nei motori di ricerca
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="metaTitle"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Meta Titolo</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Meta titolo (opzionale)" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Il titolo che verrà mostrato nei motori di ricerca (se vuoto, verrà usato il titolo della pagina)
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="metaDescription"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Meta Descrizione</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Meta descrizione (opzionale)" 
+                        className="min-h-[100px]" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      La descrizione che verrà mostrata nei motori di ricerca
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+            
+            <CardFooter className="flex justify-between">
+              <Button 
+                variant="outline" 
+                type="button" 
+                onClick={() => navigate("/admin/settings/web-pages")}
+              >
+                Annulla
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={createMutation.isPending}
+              >
+                {createMutation.isPending ? (
+                  <span>Salvataggio in corso...</span>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" /> Salva Pagina
+                  </>
+                )}
+              </Button>
+            </CardFooter>
+          </Card>
+        </form>
+      </Form>
+    </div>
+  );
+}

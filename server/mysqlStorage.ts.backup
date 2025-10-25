@@ -1,0 +1,986 @@
+import { and, eq, ne } from "drizzle-orm";
+import { initDB } from "./db";
+import {
+  users,
+  clients,
+  jobs,
+  jobTypes,
+  activities,
+  roles,
+  collaborators,
+  jobActivities,
+  activityCollaborators,
+  subscriptionPlans,
+  userSubscriptions,
+  sectors,
+  webPages,
+  planConfigurations,
+  promotionalSpots,
+  generalSettings,
+  InsertUser,
+  User,
+  InsertClient,
+  Client,
+  InsertJob,
+  Job,
+  InsertJobType,
+  JobType,
+  InsertActivity,
+  Activity,
+  InsertRole,
+  Role,
+  InsertCollaborator,
+  Collaborator,
+  InsertJobActivity,
+  JobActivity,
+  InsertActivityCollaborator,
+  ActivityCollaborator,
+  InsertSubscriptionPlan,
+  SubscriptionPlan,
+  InsertUserSubscription,
+  UserSubscription,
+  InsertSector,
+  Sector,
+  InsertWebPage,
+  WebPage,
+  InsertPlanConfiguration,
+  PlanConfiguration,
+  InsertPromotionalSpot,
+  PromotionalSpot,
+  InsertGeneralSettings,
+  GeneralSettings
+} from "../shared/schema";
+import { IStorage } from "./storage";
+
+export class MySQLStorage implements IStorage {
+  private db: any;
+  private initialized: boolean = false;
+
+  constructor() {
+    this.initializeDB();
+  }
+
+  private async initializeDB() {
+    if (!this.initialized) {
+      this.db = await initDB();
+      this.initialized = true;
+    }
+  }
+
+  private async ensureInitialized() {
+    if (!this.initialized) {
+      await this.initializeDB();
+    }
+  }
+
+  // User methods
+  async getUser(id: number): Promise<User | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getUsers(): Promise<User[]> {
+    await this.ensureInitialized();
+    return await this.db.select().from(users);
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(users).where(eq(users.username, username)).limit(1);
+    return result[0];
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(users).where(eq(users.email, email)).limit(1);
+    return result[0];
+  }
+
+  async createUser(user: InsertUser): Promise<User> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(users).values(user);
+    const insertId = result[0].insertId;
+    const newUser = await this.getUser(insertId);
+    if (!newUser) throw new Error('Failed to create user');
+    return newUser;
+  }
+
+  async updateUser(id: number, user: Partial<InsertUser>): Promise<User | undefined> {
+    await this.ensureInitialized();
+    await this.db.update(users).set(user).where(eq(users.id, id));
+    return await this.getUser(id);
+  }
+
+  async deleteUser(id: number): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await this.db.delete(users).where(eq(users.id, id));
+    return result[0].affectedRows > 0;
+  }
+
+  // Client methods
+  async getClients(): Promise<Client[]> {
+    await this.ensureInitialized();
+    return await this.db.select().from(clients);
+  }
+
+  async getClient(id: number): Promise<Client | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(clients).where(eq(clients.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createClient(client: InsertClient): Promise<Client> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(clients).values(client);
+    const insertId = result[0].insertId;
+    const newClient = await this.getClient(insertId);
+    if (!newClient) throw new Error('Failed to create client');
+    return newClient;
+  }
+
+  async updateClient(id: number, client: Partial<InsertClient>): Promise<Client | undefined> {
+    await this.ensureInitialized();
+    // Ensure only known fields are updated; map camelCase to DB columns if needed
+    const updatePayload: any = { ...client };
+    if ((client as any).geoLocation !== undefined) {
+      updatePayload.geoLocation = (client as any).geoLocation;
+    }
+    await this.db.update(clients).set(updatePayload).where(eq(clients.id, id));
+    return await this.getClient(id);
+  }
+
+  async deleteClient(id: number): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await this.db.delete(clients).where(eq(clients.id, id));
+    const ok = result[0].affectedRows > 0;
+    console.log(`[DB] deleteClient id=${id} affected=${result[0].affectedRows}`);
+    return ok;
+  }
+
+  // Job methods
+  async getJobs(): Promise<Job[]> {
+    await this.ensureInitialized();
+    return await this.db.select().from(jobs);
+  }
+
+  async getJob(id: number): Promise<Job | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(jobs).where(eq(jobs.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getJobsByClient(clientId: number): Promise<Job[]> {
+    await this.ensureInitialized();
+    return await this.db.select().from(jobs).where(eq(jobs.clientId, clientId));
+  }
+
+  async getJobsByUserId(userId: number): Promise<Job[]> {
+    await this.ensureInitialized();
+    return await this.db.select().from(jobs).where(eq(jobs.assignedUserId, userId));
+  }
+
+  async getJobsByDateRange(startDate: Date, endDate: Date): Promise<Job[]> {
+    await this.ensureInitialized();
+    return await this.db.select().from(jobs).where(
+      and(
+        eq(jobs.startDate, startDate),
+        eq(jobs.endDate, endDate)
+      )
+    );
+  }
+
+  async createJob(job: InsertJob): Promise<Job> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(jobs).values(job);
+    const insertId = result[0].insertId;
+    const newJob = await this.getJob(insertId);
+    if (!newJob) throw new Error('Failed to create job');
+    return newJob;
+  }
+
+  async updateJob(id: number, job: Partial<InsertJob>): Promise<Job | undefined> {
+    await this.ensureInitialized();
+    await this.db.update(jobs).set(job).where(eq(jobs.id, id));
+    return await this.getJob(id);
+  }
+
+  async deleteJob(id: number): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await this.db.delete(jobs).where(eq(jobs.id, id));
+    return result[0].affectedRows > 0;
+  }
+
+  // Job Type methods
+  async getJobTypes(): Promise<JobType[]> {
+    await this.ensureInitialized();
+    return await this.db.select().from(jobTypes);
+  }
+
+  async getJobType(id: number): Promise<JobType | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(jobTypes).where(eq(jobTypes.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createJobType(jobType: InsertJobType): Promise<JobType> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(jobTypes).values(jobType);
+    const newJobType = await this.getJobType(result[0].insertId);
+    if (!newJobType) throw new Error('Failed to create job type');
+    return newJobType;
+  }
+
+  async updateJobType(id: number, jobType: Partial<InsertJobType>): Promise<JobType | undefined> {
+    await this.ensureInitialized();
+    await this.db.update(jobTypes).set(jobType).where(eq(jobTypes.id, id));
+    return await this.getJobType(id);
+  }
+
+  async deleteJobType(id: number): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await this.db.delete(jobTypes).where(eq(jobTypes.id, id));
+    return result[0].affectedRows > 0;
+  }
+
+  // Activity methods
+  async getActivities(): Promise<Activity[]> {
+    await this.ensureInitialized();
+    return await this.db.select().from(activities);
+  }
+
+  async getActivity(id: number): Promise<Activity | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(activities).where(eq(activities.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getActivitiesByJobType(jobTypeId: number): Promise<Activity[]> {
+    await this.ensureInitialized();
+    return await this.db.select().from(activities).where(eq(activities.jobTypeId, jobTypeId));
+  }
+
+  async createActivity(activity: InsertActivity): Promise<Activity> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(activities).values(activity);
+    const newActivity = await this.getActivity(result.insertId);
+    if (!newActivity) throw new Error('Failed to create activity');
+    return newActivity;
+  }
+
+  async updateActivity(id: number, activity: Partial<InsertActivity>): Promise<Activity | undefined> {
+    await this.ensureInitialized();
+    await this.db.update(activities).set(activity).where(eq(activities.id, id));
+    return await this.getActivity(id);
+  }
+
+  async deleteActivity(id: number): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await this.db.delete(activities).where(eq(activities.id, id));
+    return result[0].affectedRows > 0;
+  }
+
+  // Role methods
+  async getRoles(): Promise<Role[]> {
+    await this.ensureInitialized();
+    return await this.db.select().from(roles);
+  }
+
+  async getRole(id: number): Promise<Role | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(roles).where(eq(roles.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createRole(role: InsertRole): Promise<Role> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(roles).values(role);
+    const newRole = await this.getRole(result[0].insertId);
+    if (!newRole) throw new Error('Failed to create role');
+    return newRole;
+  }
+
+  async updateRole(id: number, role: Partial<InsertRole>): Promise<Role | undefined> {
+    await this.ensureInitialized();
+    await this.db.update(roles).set(role).where(eq(roles.id, id));
+    return await this.getRole(id);
+  }
+
+  async deleteRole(id: number): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await this.db.delete(roles).where(eq(roles.id, id));
+    return result[0].affectedRows > 0;
+  }
+
+  // Collaborator methods
+  async getCollaborators(): Promise<Collaborator[]> {
+    await this.ensureInitialized();
+    return await this.db.select().from(collaborators);
+  }
+
+  async getCollaborator(id: number): Promise<Collaborator | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(collaborators).where(eq(collaborators.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getCollaboratorsByRole(roleId: number): Promise<Collaborator[]> {
+    await this.ensureInitialized();
+    return await this.db.select().from(collaborators).where(eq(collaborators.roleId, roleId));
+  }
+
+  async createCollaborator(collaborator: InsertCollaborator): Promise<Collaborator> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(collaborators).values(collaborator);
+    // Drizzle may return OkPacket or OkPacket[] depending on driver
+    const insertId = Array.isArray(result) ? (result[0] as any)?.insertId : (result as any)?.insertId;
+    const newCollaborator = insertId ? await this.getCollaborator(insertId) : undefined;
+    if (!newCollaborator) throw new Error('Failed to create collaborator');
+    return newCollaborator;
+  }
+
+  async updateCollaborator(id: number, collaborator: Partial<InsertCollaborator>): Promise<Collaborator | undefined> {
+    await this.ensureInitialized();
+    await this.db.update(collaborators).set(collaborator).where(eq(collaborators.id, id));
+    return await this.getCollaborator(id);
+  }
+
+  async deleteCollaborator(id: number): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await this.db.delete(collaborators).where(eq(collaborators.id, id));
+    return result[0].affectedRows > 0;
+  }
+
+  // Job Activity methods
+  async getJobActivities(): Promise<JobActivity[]> {
+    await this.ensureInitialized();
+    return await this.db.select().from(jobActivities);
+  }
+
+  async getJobActivity(id: number): Promise<JobActivity | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(jobActivities).where(eq(jobActivities.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getJobActivitiesByJob(jobId: number): Promise<JobActivity[]> {
+    await this.ensureInitialized();
+    return await this.db.select().from(jobActivities).where(eq(jobActivities.jobId, jobId));
+  }
+
+  async createJobActivity(jobActivity: InsertJobActivity): Promise<JobActivity> {
+    await this.ensureInitialized();
+    
+    try {
+      const result = await this.db.insert(jobActivities).values(jobActivity);
+      
+      // Get the insert ID from the result
+      const insertId = Array.isArray(result) ? result[0]?.insertId : result?.insertId;
+      
+      if (!insertId) {
+        throw new Error('Failed to get insert ID from result');
+      }
+      
+      // Create the job activity object with the insert ID
+      const newJobActivity: JobActivity = {
+        id: insertId,
+        jobId: jobActivity.jobId,
+        activityId: jobActivity.activityId,
+        startDate: jobActivity.startDate,
+        duration: jobActivity.duration,
+        status: jobActivity.status || 'scheduled',
+        completedDate: jobActivity.completedDate || null,
+        actualDuration: jobActivity.actualDuration || null,
+        notes: jobActivity.notes || null,
+        photos: jobActivity.photos || null
+      };
+      
+      return newJobActivity;
+    } catch (error) {
+      console.error('Error creating job activity:', error);
+      throw error;
+    }
+  }
+
+  async updateJobActivity(id: number, jobActivity: Partial<InsertJobActivity>): Promise<JobActivity | undefined> {
+    await this.ensureInitialized();
+    await this.db.update(jobActivities).set(jobActivity).where(eq(jobActivities.id, id));
+    return await this.getJobActivity(id);
+  }
+
+  async deleteJobActivity(id: number): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await this.db.delete(jobActivities).where(eq(jobActivities.id, id));
+    return result[0].affectedRows > 0;
+  }
+
+  // Activity Collaborator methods
+  async getActivityCollaborators(): Promise<ActivityCollaborator[]> {
+    await this.ensureInitialized();
+    return await this.db.select().from(activityCollaborators);
+  }
+
+  async getCollaboratorsByActivity(activityId: number): Promise<number[]> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(activityCollaborators).where(eq(activityCollaborators.activityId, activityId));
+    return result.map(ac => ac.collaboratorId);
+  }
+
+  async getActivitiesByCollaborator(collaboratorId: number): Promise<number[]> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(activityCollaborators).where(eq(activityCollaborators.collaboratorId, collaboratorId));
+    return result.map(ac => ac.activityId);
+  }
+
+  async assignCollaboratorToActivity(activityId: number, collaboratorId: number): Promise<ActivityCollaborator> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(activityCollaborators).values({ activityId, collaboratorId });
+    const newAssignment = await this.db.select().from(activityCollaborators).where(eq(activityCollaborators.id, result.insertId)).limit(1);
+    if (!newAssignment[0]) throw new Error('Failed to assign collaborator to activity');
+    return newAssignment[0];
+  }
+
+  async removeCollaboratorFromActivity(activityId: number, collaboratorId: number): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await this.db.delete(activityCollaborators).where(
+      and(
+        eq(activityCollaborators.activityId, activityId),
+        eq(activityCollaborators.collaboratorId, collaboratorId)
+      )
+    );
+    return result[0].affectedRows > 0;
+  }
+
+  // Subscription plan methods
+  async getSubscriptionPlans(): Promise<SubscriptionPlan[]> {
+    await this.ensureInitialized();
+    return await this.db.select().from(subscriptionPlans);
+  }
+
+  async getSubscriptionPlan(id: number): Promise<SubscriptionPlan | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createSubscriptionPlan(plan: InsertSubscriptionPlan): Promise<SubscriptionPlan> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(subscriptionPlans).values(plan);
+    const newPlan = await this.getSubscriptionPlan(result.insertId);
+    if (!newPlan) throw new Error('Failed to create subscription plan');
+    return newPlan;
+  }
+
+  async updateSubscriptionPlan(id: number, plan: Partial<InsertSubscriptionPlan>): Promise<SubscriptionPlan | undefined> {
+    await this.ensureInitialized();
+    await this.db.update(subscriptionPlans).set(plan).where(eq(subscriptionPlans.id, id));
+    return await this.getSubscriptionPlan(id);
+  }
+
+  async deleteSubscriptionPlan(id: number): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await this.db.delete(subscriptionPlans).where(eq(subscriptionPlans.id, id));
+    return result[0].affectedRows > 0;
+  }
+
+  // User subscription methods
+  async getUserSubscriptions(): Promise<UserSubscription[]> {
+    await this.ensureInitialized();
+    return await this.db.select().from(userSubscriptions);
+  }
+
+  async getUserSubscription(id: number): Promise<UserSubscription | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(userSubscriptions).where(eq(userSubscriptions.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getUserSubscriptionByUserId(userId: number): Promise<UserSubscription | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(userSubscriptions).where(eq(userSubscriptions.userId, userId)).limit(1);
+    return result[0];
+  }
+
+  async createUserSubscription(subscription: InsertUserSubscription): Promise<UserSubscription> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(userSubscriptions).values(subscription);
+    const newSubscription = await this.getUserSubscription(result.insertId);
+    if (!newSubscription) throw new Error('Failed to create user subscription');
+    return newSubscription;
+  }
+
+  async updateUserSubscription(id: number, subscription: Partial<InsertUserSubscription>): Promise<UserSubscription | undefined> {
+    await this.ensureInitialized();
+    await this.db.update(userSubscriptions).set(subscription).where(eq(userSubscriptions.id, id));
+    return await this.getUserSubscription(id);
+  }
+
+  async deleteUserSubscription(id: number): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await this.db.delete(userSubscriptions).where(eq(userSubscriptions.id, id));
+    return result[0].affectedRows > 0;
+  }
+
+  // Sector methods
+  async getAllSectors(): Promise<Sector[]> {
+    await this.ensureInitialized();
+    return await this.db.select().from(sectors);
+  }
+
+  async getSectors(): Promise<Sector[]> {
+    return this.getAllSectors();
+  }
+
+  async getSector(id: number): Promise<Sector | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(sectors).where(eq(sectors.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createSector(sector: InsertSector): Promise<Sector> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(sectors).values(sector);
+    const newSector = await this.getSector(result[0].insertId);
+    if (!newSector) throw new Error('Failed to create sector');
+    return newSector;
+  }
+
+  async updateSector(id: number, sector: Partial<InsertSector>): Promise<Sector | undefined> {
+    await this.ensureInitialized();
+    await this.db.update(sectors).set(sector).where(eq(sectors.id, id));
+    return await this.getSector(id);
+  }
+
+  async deleteSector(id: number): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await this.db.delete(sectors).where(eq(sectors.id, id));
+    return result[0].affectedRows > 0;
+  }
+
+  // WebPage methods
+  async getAllWebPages(): Promise<WebPage[]> {
+    await this.ensureInitialized();
+    return await this.db.select().from(webPages);
+  }
+
+  async getWebPagesByType(type: string): Promise<WebPage[]> {
+    await this.ensureInitialized();
+    return await this.db.select().from(webPages).where(eq(webPages.type, type));
+  }
+
+  async getWebPage(id: number): Promise<WebPage | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(webPages).where(eq(webPages.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getWebPageBySlug(slug: string): Promise<WebPage | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(webPages).where(eq(webPages.slug, slug)).limit(1);
+    return result[0];
+  }
+
+  async createWebPage(webPage: InsertWebPage): Promise<WebPage> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(webPages).values(webPage);
+    const newWebPage = await this.getWebPage(result.insertId);
+    if (!newWebPage) throw new Error('Failed to create web page');
+    return newWebPage;
+  }
+
+  async updateWebPage(id: number, webPage: Partial<InsertWebPage>): Promise<WebPage | undefined> {
+    await this.ensureInitialized();
+    await this.db.update(webPages).set(webPage).where(eq(webPages.id, id));
+    return await this.getWebPage(id);
+  }
+
+  async deleteWebPage(id: number): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await this.db.delete(webPages).where(eq(webPages.id, id));
+    return result[0].affectedRows > 0;
+  }
+
+  // Promotional Spot methods
+  async getPromotionalSpots(): Promise<PromotionalSpot[]> {
+    await this.ensureInitialized();
+    return await this.db.select().from(promotionalSpots);
+  }
+
+  async getActivePromotionalSpots(): Promise<PromotionalSpot[]> {
+    await this.ensureInitialized();
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinutes = now.getMinutes();
+    const currentTimeStr = `${currentHour.toString().padStart(2, '0')}:${currentMinutes.toString().padStart(2, '0')}`;
+    
+    const allSpots = await this.getPromotionalSpots();
+    
+    return allSpots.filter(spot => {
+      // Filtra per stato attivo
+      if (spot.status !== "active") return false;
+      
+      // Filtra per date di validità (se specificate)
+      if (spot.startDate && new Date(spot.startDate) > now) return false;
+      if (spot.endDate && new Date(spot.endDate) < now) return false;
+      
+      // Filtra per fasce orarie (se specificate)
+      if (spot.timeRanges && spot.timeRanges.length > 0) {
+        const hasValidTimeRange = spot.timeRanges.some(range => {
+          if (!range.startTime || !range.endTime) return false;
+          return currentTimeStr >= range.startTime && currentTimeStr <= range.endTime;
+        });
+        
+        if (!hasValidTimeRange) return false;
+      } else if (spot.startTime && spot.endTime) {
+        // Supporto per i campi legacy (singola fascia oraria)
+        if (currentTimeStr < spot.startTime || currentTimeStr > spot.endTime) return false;
+      }
+      
+      return true;
+    });
+  }
+
+  async getPromotionalSpot(id: number): Promise<PromotionalSpot | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(promotionalSpots).where(eq(promotionalSpots.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createPromotionalSpot(spot: InsertPromotionalSpot): Promise<PromotionalSpot> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(promotionalSpots).values(spot);
+    const newSpot = await this.getPromotionalSpot(result.insertId);
+    if (!newSpot) throw new Error('Failed to create promotional spot');
+    return newSpot;
+  }
+
+  async updatePromotionalSpot(id: number, spot: Partial<InsertPromotionalSpot>): Promise<PromotionalSpot | undefined> {
+    await this.ensureInitialized();
+    await this.db.update(promotionalSpots).set(spot).where(eq(promotionalSpots.id, id));
+    return await this.getPromotionalSpot(id);
+  }
+
+  async deletePromotionalSpot(id: number): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await this.db.delete(promotionalSpots).where(eq(promotionalSpots.id, id));
+    return result[0].affectedRows > 0;
+  }
+
+  // PlanConfiguration methods
+  async getPlanConfiguration(id: number): Promise<PlanConfiguration | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(planConfigurations).where(eq(planConfigurations.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getPlanConfigurationByUser(userId: number): Promise<PlanConfiguration | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(planConfigurations).where(eq(planConfigurations.userId, userId)).limit(1);
+    return result[0];
+  }
+
+  async createPlanConfiguration(config: InsertPlanConfiguration): Promise<PlanConfiguration> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(planConfigurations).values(config);
+    const newConfig = await this.getPlanConfiguration(result.insertId);
+    if (!newConfig) throw new Error('Failed to create plan configuration');
+    return newConfig;
+  }
+
+  async updatePlanConfiguration(id: number, config: Partial<InsertPlanConfiguration>): Promise<PlanConfiguration | undefined> {
+    await this.ensureInitialized();
+    await this.db.update(planConfigurations).set(config).where(eq(planConfigurations.id, id));
+    return await this.getPlanConfiguration(id);
+  }
+
+  async deletePlanConfiguration(id: number): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await this.db.delete(planConfigurations).where(eq(planConfigurations.id, id));
+    return result[0].affectedRows > 0;
+  }
+
+  // Job methods
+  async getJobs(): Promise<Job[]> {
+    await this.ensureInitialized();
+    return await this.db.select().from(jobs);
+  }
+
+  async getJob(id: number): Promise<Job | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(jobs).where(eq(jobs.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createJob(job: InsertJob): Promise<Job> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(jobs).values(job);
+    const newJob = await this.getJob(result[0].insertId);
+    if (!newJob) throw new Error('Failed to create job');
+    return newJob;
+  }
+
+  async updateJob(id: number, job: Partial<InsertJob>): Promise<Job | undefined> {
+    await this.ensureInitialized();
+    await this.db.update(jobs).set(job).where(eq(jobs.id, id));
+    return await this.getJob(id);
+  }
+
+  async deleteJob(id: number): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await this.db.delete(jobs).where(eq(jobs.id, id));
+    return result[0].affectedRows > 0;
+  }
+
+  // Activity methods
+  async getActivities(): Promise<Activity[]> {
+    await this.ensureInitialized();
+    return await this.db.select().from(activities);
+  }
+
+  async getActivity(id: number): Promise<Activity | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(activities).where(eq(activities.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createActivity(activity: InsertActivity): Promise<Activity> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(activities).values(activity);
+    const newActivity = await this.getActivity(result[0].insertId);
+    if (!newActivity) throw new Error('Failed to create activity');
+    return newActivity;
+  }
+
+  async updateActivity(id: number, activity: Partial<InsertActivity>): Promise<Activity | undefined> {
+    await this.ensureInitialized();
+    await this.db.update(activities).set(activity).where(eq(activities.id, id));
+    return await this.getActivity(id);
+  }
+
+  async deleteActivity(id: number): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await this.db.delete(activities).where(eq(activities.id, id));
+    return result[0].affectedRows > 0;
+  }
+
+  // Role methods
+  async getRoles(): Promise<Role[]> {
+    await this.ensureInitialized();
+    return await this.db.select().from(roles);
+  }
+
+  async getRole(id: number): Promise<Role | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(roles).where(eq(roles.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createRole(role: InsertRole): Promise<Role> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(roles).values(role);
+    const newRole = await this.getRole(result[0].insertId);
+    if (!newRole) throw new Error('Failed to create role');
+    return newRole;
+  }
+
+  async updateRole(id: number, role: Partial<InsertRole>): Promise<Role | undefined> {
+    await this.ensureInitialized();
+    await this.db.update(roles).set(role).where(eq(roles.id, id));
+    return await this.getRole(id);
+  }
+
+  async deleteRole(id: number): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await this.db.delete(roles).where(eq(roles.id, id));
+    return result[0].affectedRows > 0;
+  }
+
+  // Subscription plan methods
+  async getSubscriptionPlans(): Promise<SubscriptionPlan[]> {
+    await this.ensureInitialized();
+    return await this.db.select().from(subscriptionPlans);
+  }
+
+  async getSubscriptionPlan(id: number): Promise<SubscriptionPlan | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createSubscriptionPlan(plan: InsertSubscriptionPlan): Promise<SubscriptionPlan> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(subscriptionPlans).values(plan);
+    const newPlan = await this.getSubscriptionPlan(result[0].insertId);
+    if (!newPlan) throw new Error('Failed to create subscription plan');
+    return newPlan;
+  }
+
+  async updateSubscriptionPlan(id: number, plan: Partial<InsertSubscriptionPlan>): Promise<SubscriptionPlan | undefined> {
+    await this.ensureInitialized();
+    await this.db.update(subscriptionPlans).set(plan).where(eq(subscriptionPlans.id, id));
+    return await this.getSubscriptionPlan(id);
+  }
+
+  async deleteSubscriptionPlan(id: number): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await this.db.delete(subscriptionPlans).where(eq(subscriptionPlans.id, id));
+    return result[0].affectedRows > 0;
+  }
+
+  // User subscription methods
+  async getUserSubscriptions(): Promise<UserSubscription[]> {
+    await this.ensureInitialized();
+    return await this.db.select().from(userSubscriptions);
+  }
+
+  async getUserSubscription(id: number): Promise<UserSubscription | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(userSubscriptions).where(eq(userSubscriptions.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getUserSubscriptionByUserId(userId: number): Promise<UserSubscription | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(userSubscriptions).where(eq(userSubscriptions.userId, userId)).limit(1);
+    return result[0];
+  }
+
+  async createUserSubscription(subscription: InsertUserSubscription): Promise<UserSubscription> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(userSubscriptions).values(subscription);
+    const newSubscription = await this.getUserSubscription(result[0].insertId);
+    if (!newSubscription) throw new Error('Failed to create user subscription');
+    return newSubscription;
+  }
+
+  async updateUserSubscription(id: number, subscription: Partial<InsertUserSubscription>): Promise<UserSubscription | undefined> {
+    await this.ensureInitialized();
+    await this.db.update(userSubscriptions).set(subscription).where(eq(userSubscriptions.id, id));
+    return await this.getUserSubscription(id);
+  }
+
+  async deleteUserSubscription(id: number): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await this.db.delete(userSubscriptions).where(eq(userSubscriptions.id, id));
+    return result[0].affectedRows > 0;
+  }
+
+  // Plan Configuration methods
+  async getPlanConfigurations(): Promise<PlanConfiguration[]> {
+    await this.ensureInitialized();
+    return await this.db.select().from(planConfigurations);
+  }
+
+  async getPlanConfiguration(id: number): Promise<PlanConfiguration | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(planConfigurations).where(eq(planConfigurations.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getPlanConfigurationByUser(userId: number): Promise<PlanConfiguration | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(planConfigurations).where(eq(planConfigurations.userId, userId)).limit(1);
+    return result[0];
+  }
+
+  async createPlanConfiguration(config: InsertPlanConfiguration): Promise<PlanConfiguration> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(planConfigurations).values(config);
+    const newConfig = await this.getPlanConfiguration(result[0].insertId);
+    if (!newConfig) throw new Error('Failed to create plan configuration');
+    return newConfig;
+  }
+
+  async updatePlanConfiguration(id: number, config: Partial<InsertPlanConfiguration>): Promise<PlanConfiguration | undefined> {
+    await this.ensureInitialized();
+    await this.db.update(planConfigurations).set(config).where(eq(planConfigurations.id, id));
+    return await this.getPlanConfiguration(id);
+  }
+
+  async deletePlanConfiguration(id: number): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await this.db.delete(planConfigurations).where(eq(planConfigurations.id, id));
+    return result[0].affectedRows > 0;
+  }
+
+  // Web Page methods
+  async getAllWebPages(): Promise<WebPage[]> {
+    await this.ensureInitialized();
+    return await this.db.select().from(webPages);
+  }
+
+  async getWebPagesByType(type: string): Promise<WebPage[]> {
+    await this.ensureInitialized();
+    return await this.db.select().from(webPages).where(eq(webPages.type, type));
+  }
+
+  async getWebPage(id: number): Promise<WebPage | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(webPages).where(eq(webPages.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getWebPageBySlug(slug: string): Promise<WebPage | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(webPages).where(eq(webPages.slug, slug)).limit(1);
+    return result[0];
+  }
+
+  async createWebPage(webPage: InsertWebPage): Promise<WebPage> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(webPages).values(webPage);
+    const newWebPage = await this.getWebPage(result[0].insertId);
+    if (!newWebPage) throw new Error('Failed to create web page');
+    return newWebPage;
+  }
+
+  async updateWebPage(id: number, webPage: Partial<InsertWebPage>): Promise<WebPage | undefined> {
+    await this.ensureInitialized();
+    await this.db.update(webPages).set(webPage).where(eq(webPages.id, id));
+    return await this.getWebPage(id);
+  }
+
+  async deleteWebPage(id: number): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await this.db.delete(webPages).where(eq(webPages.id, id));
+    return result[0].affectedRows > 0;
+  }
+
+  // General Settings methods
+  async getGeneralSettings(): Promise<GeneralSettings | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(generalSettings).limit(1);
+    return result[0] || undefined;
+  }
+
+  async upsertGeneralSettings(settings: InsertGeneralSettings): Promise<GeneralSettings> {
+    await this.ensureInitialized();
+    
+    // Check if settings exist
+    const existing = await this.getGeneralSettings();
+    
+    if (existing) {
+      // Update existing settings
+      const updatedSettings = {
+        ...settings,
+        updatedAt: new Date()
+      };
+      await this.db.update(generalSettings)
+        .set(updatedSettings)
+        .where(eq(generalSettings.id, existing.id));
+      
+      return { ...existing, ...updatedSettings };
+    } else {
+      // Create new settings
+      const newSettings = {
+        ...settings,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      const result = await this.db.insert(generalSettings).values(newSettings);
+      const id = result[0].insertId;
+      
+      return { id, ...newSettings };
+    }
+  }
+}

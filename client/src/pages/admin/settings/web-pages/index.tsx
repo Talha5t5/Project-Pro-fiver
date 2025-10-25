@@ -1,0 +1,385 @@
+import React, { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Link } from "wouter";
+import { queryClient } from "../../../../lib/queryClient";
+import { Button } from "../../../../components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../../../../components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../components/ui/tabs";
+import { Badge } from "../../../../components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../../components/ui/table";
+import { Separator } from "../../../../components/ui/separator";
+import { Switch } from "../../../../components/ui/switch";
+import { toast } from "../../../../hooks/use-toast";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../../../../components/ui/alert-dialog";
+
+import { FileEdit, Trash2, Plus, Globe, Eye, ExternalLink } from "lucide-react";
+import type { WebPage } from "../../../../lib/schema";
+
+export default function WebPagesPage() {
+  const [activeTab, setActiveTab] = useState<string>("desktop");
+  
+  const { data: pages, isLoading, error } = useQuery({
+    queryKey: ["/api/admin/web-pages"],
+    select: (data: WebPage[]) => data
+  });
+  
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await fetch(`/api/admin/web-pages/${id}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error("Si è verificato un errore durante l'eliminazione della pagina");
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/web-pages"] });
+      toast({
+        title: "Pagina eliminata",
+        description: "La pagina è stata eliminata con successo",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Errore",
+        description: "Si è verificato un errore durante l'eliminazione della pagina",
+        variant: "destructive"
+      });
+    }
+  });
+
+  const publishMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: number, status: string }) => {
+      const response = await fetch(`/api/admin/web-pages/${id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ status })
+      });
+      
+      if (!response.ok) {
+        throw new Error("Si è verificato un errore durante la pubblicazione della pagina");
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/web-pages"] });
+      toast({
+        title: "Pagina aggiornata",
+        description: "Lo stato della pagina è stato modificato con successo",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Errore",
+        description: "Si è verificato un errore durante l'aggiornamento dello stato della pagina",
+        variant: "destructive"
+      });
+    }
+  });
+  
+  const setHomepageMutation = useMutation({
+    mutationFn: async ({ id, isHomepage }: { id: number, isHomepage: boolean }) => {
+      const response = await fetch(`/api/admin/web-pages/${id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ isHomepage })
+      });
+      
+      if (!response.ok) {
+        throw new Error("Si è verificato un errore durante l'impostazione della homepage");
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/web-pages"] });
+      toast({
+        title: "Homepage impostata",
+        description: "La homepage è stata impostata con successo",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Errore",
+        description: "Si è verificato un errore durante l'impostazione della homepage",
+        variant: "destructive"
+      });
+    }
+  });
+
+  const handleDelete = (id: number) => {
+    deleteMutation.mutate(id);
+  };
+
+  const handlePublishToggle = (page: WebPage) => {
+    const newStatus = page.status === "published" ? "draft" : "published";
+    publishMutation.mutate({ id: page.id, status: newStatus });
+  };
+  
+  const handleHomepageToggle = (page: WebPage) => {
+    setHomepageMutation.mutate({ id: page.id, isHomepage: !page.isHomepage });
+  };
+
+  // Funzione per formattare le date in modo sicuro
+  const formatDate = (dateStr: string | Date | null) => {
+    if (!dateStr) return '-';
+    try {
+      return new Date(dateStr).toLocaleDateString();
+    } catch (e) {
+      return '-';
+    }
+  };
+
+  const filteredPages = pages?.filter(page => page.type === activeTab) || [];
+  
+  if (isLoading) return <div className="flex justify-center p-8">Caricamento in corso...</div>;
+  if (error) return <div className="text-red-500 p-8">Si è verificato un errore nel caricamento delle pagine</div>;
+
+  return (
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">Gestione Pagine Web</h1>
+          <p className="text-gray-500">Gestisci le pagine del tuo sito web</p>
+        </div>
+        <Button asChild>
+          <Link href="/admin/settings/web-pages/new">
+            <Plus className="mr-2 h-4 w-4" /> Nuova Pagina
+          </Link>
+        </Button>
+      </div>
+
+      <Tabs defaultValue="desktop" className="space-y-4" onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="desktop">
+            <Globe className="mr-2 h-4 w-4" />
+            Pagine Desktop
+          </TabsTrigger>
+          <TabsTrigger value="mobile">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 h-4 w-4"><rect width="7" height="14" x="8.5" y="5" rx="1" /><path d="M12 17v.01" /></svg>
+            Pagine Mobile
+          </TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="desktop" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Pagine Desktop</CardTitle>
+              <CardDescription>
+                Gestisci le pagine per la versione desktop del sito web
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {filteredPages.length === 0 ? (
+                <div className="text-center p-4 bg-gray-50 rounded-md">
+                  <p>Nessuna pagina desktop creata</p>
+                  <Button variant="outline" className="mt-2" asChild>
+                    <Link href="/admin/settings/web-pages/new?type=desktop">
+                      <Plus className="mr-2 h-4 w-4" /> Crea la prima pagina
+                    </Link>
+                  </Button>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Titolo</TableHead>
+                      <TableHead>Slug</TableHead>
+                      <TableHead>Stato</TableHead>
+                      <TableHead>Homepage</TableHead>
+                      <TableHead>Ultima modifica</TableHead>
+                      <TableHead className="text-right">Azioni</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredPages.map(page => (
+                      <TableRow key={page.id}>
+                        <TableCell className="font-medium">{page.title}</TableCell>
+                        <TableCell>{page.slug}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Switch 
+                              checked={page.status === "published"} 
+                              onCheckedChange={() => handlePublishToggle(page)}
+                            />
+                            <Badge variant={page.status === "published" ? "default" : "outline"}>
+                              {page.status === "published" ? "Pubblicata" : "Bozza"}
+                            </Badge>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Switch 
+                              checked={page.isHomepage || false} 
+                              onCheckedChange={() => handleHomepageToggle(page)}
+                              disabled={page.status !== "published"}
+                            />
+                            {page.isHomepage && <Badge variant="secondary">Homepage</Badge>}
+                          </div>
+                        </TableCell>
+                        <TableCell>{formatDate(page.updatedAt)}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button variant="ghost" size="icon" asChild>
+                              <Link href={`/${page.slug}`} target="_blank">
+                                <Eye className="h-4 w-4" />
+                              </Link>
+                            </Button>
+                            <Button variant="ghost" size="icon" asChild>
+                              <Link href={`/admin/settings/web-pages/edit/${page.id}`}>
+                                <FileEdit className="h-4 w-4" />
+                              </Link>
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Conferma eliminazione</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Sei sicuro di voler eliminare questa pagina? Questa azione non può essere annullata.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Annulla</AlertDialogCancel>
+                                  <AlertDialogAction 
+                                    onClick={() => handleDelete(page.id)}
+                                    className="bg-red-500 hover:bg-red-600"
+                                  >
+                                    Elimina
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="mobile" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Pagine Mobile</CardTitle>
+              <CardDescription>
+                Gestisci le pagine per la versione mobile del sito web
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {filteredPages.length === 0 ? (
+                <div className="text-center p-4 bg-gray-50 rounded-md">
+                  <p>Nessuna pagina mobile creata</p>
+                  <Button variant="outline" className="mt-2" asChild>
+                    <Link href="/admin/settings/web-pages/new?type=mobile">
+                      <Plus className="mr-2 h-4 w-4" /> Crea la prima pagina
+                    </Link>
+                  </Button>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Titolo</TableHead>
+                      <TableHead>Slug</TableHead>
+                      <TableHead>Stato</TableHead>
+                      <TableHead>Homepage</TableHead>
+                      <TableHead>Ultima modifica</TableHead>
+                      <TableHead className="text-right">Azioni</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredPages.map(page => (
+                      <TableRow key={page.id}>
+                        <TableCell className="font-medium">{page.title}</TableCell>
+                        <TableCell>{page.slug}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Switch 
+                              checked={page.status === "published"} 
+                              onCheckedChange={() => handlePublishToggle(page)}
+                            />
+                            <Badge variant={page.status === "published" ? "default" : "outline"}>
+                              {page.status === "published" ? "Pubblicata" : "Bozza"}
+                            </Badge>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Switch 
+                              checked={page.isHomepage || false} 
+                              onCheckedChange={() => handleHomepageToggle(page)}
+                              disabled={page.status !== "published"}
+                            />
+                            {page.isHomepage && <Badge variant="secondary">Homepage</Badge>}
+                          </div>
+                        </TableCell>
+                        <TableCell>{formatDate(page.updatedAt)}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button variant="ghost" size="icon" asChild>
+                              <Link href={`/mobile/${page.slug}`} target="_blank">
+                                <Eye className="h-4 w-4" />
+                              </Link>
+                            </Button>
+                            <Button variant="ghost" size="icon" asChild>
+                              <Link href={`/admin/settings/web-pages/edit/${page.id}`}>
+                                <FileEdit className="h-4 w-4" />
+                              </Link>
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Conferma eliminazione</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Sei sicuro di voler eliminare questa pagina? Questa azione non può essere annullata.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Annulla</AlertDialogCancel>
+                                  <AlertDialogAction 
+                                    onClick={() => handleDelete(page.id)}
+                                    className="bg-red-500 hover:bg-red-600"
+                                  >
+                                    Elimina
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}

@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1755848928877,
+      "tag": "0000_glorious_young_avengers",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1758092585359,
+      "tag": "0001_quick_roxanne_simpson",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1758441112469,
+      "tag": "0002_fearless_robbie_robertson",
+      "breakpoints": true
+    }
+  ]
+}

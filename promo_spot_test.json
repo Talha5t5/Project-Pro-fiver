@@ -1,0 +1,19 @@
+{
+  "title": "Homepage Promo",
+  "content": "Welcome offer",
+  "redirectUrl": "",
+  "enableRedirect": false,
+  "images": ["/demo-image1.jpg", "/demo-image2.jpg"],
+  "textAnimationType": "scroll",
+  "imageDisplayType": "slideshow",
+  "status": "active",
+  "timeRanges": [{"startTime":"08:00","endTime":"22:00"}],
+  "startDate": "2025-10-20",
+  "endDate": "2025-10-30",
+  "visiblePages": "all",
+  "position": "top",
+  "width": 1024,
+  "height": 200,
+  "displayDuration": 5,
+  "displayInterval": 0
+}
