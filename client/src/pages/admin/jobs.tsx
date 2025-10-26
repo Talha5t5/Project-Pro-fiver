@@ -89,26 +89,28 @@ export default function JobsPage() {
     },
   });
 
-  // Fetch jobs data
+  // Fetch jobs data - use mobile API for permission checks
   const { data: jobs = [], isLoading, error } = useQuery({
-    queryKey: ["/api/jobs"],
-    queryFn: () => apiRequest("GET", "/api/jobs").then(res => res.json()),
+    queryKey: ["/api/mobile/all-jobs"],
+    queryFn: () => apiRequest("GET", "/api/mobile/all-jobs").then(res => res.json()),
     enabled: true,
+    retry: false, // Don't retry on permission errors
   });
 
-  // Fetch clients for dropdown
+  // Fetch clients for dropdown - use mobile API for permission checks
   const { data: clients = [] } = useQuery({
-    queryKey: ["/api/clients"],
-    queryFn: () => apiRequest("GET", "/api/clients").then(res => res.json()),
+    queryKey: ["/api/mobile/clients"],
+    queryFn: () => apiRequest("GET", "/api/mobile/clients").then(res => res.json()),
     enabled: true,
+    retry: false, // Don't retry on permission errors
   });
 
-     // Create job mutation
+     // Create job mutation - use mobile API for permission checks
    const createJobMutation = useMutation({
      mutationFn: (data: JobFormData) => 
-       apiRequest("POST", "/api/jobs", data).then(res => res.json()),
+       apiRequest("POST", "/api/mobile/jobs", data).then(res => res.json()),
      onSuccess: () => {
-       queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
+       queryClient.invalidateQueries({ queryKey: ["/api/mobile/all-jobs"] });
        toast({
          title: t('jobs.messages.created'),
          description: t('jobs.messages.created'),
@@ -125,12 +127,12 @@ export default function JobsPage() {
      },
    });
 
-     // Update job mutation
+     // Update job mutation - use mobile API for permission checks
    const updateJobMutation = useMutation({
      mutationFn: ({ id, data }: { id: number; data: JobFormData }) =>
-       apiRequest("PUT", `/api/jobs/${id}`, data).then(res => res.json()),
+       apiRequest("PUT", `/api/mobile/jobs/${id}`, data).then(res => res.json()),
      onSuccess: () => {
-       queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
+       queryClient.invalidateQueries({ queryKey: ["/api/mobile/all-jobs"] });
        toast({
          title: t('jobs.messages.updated'),
          description: t('jobs.messages.updated'),
@@ -147,12 +149,12 @@ export default function JobsPage() {
      },
    });
 
-   // Delete job mutation
+   // Delete job mutation - use mobile API for permission checks
    const deleteJobMutation = useMutation({
      mutationFn: (id: number) =>
-       apiRequest("DELETE", `/api/jobs/${id}`).then(res => res.json()),
+       apiRequest("DELETE", `/api/mobile/jobs/${id}`).then(res => res.json()),
      onSuccess: () => {
-       queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
+       queryClient.invalidateQueries({ queryKey: ["/api/mobile/all-jobs"] });
        toast({
          title: t('jobs.messages.deleted'),
          description: t('jobs.messages.deleted'),

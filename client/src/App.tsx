@@ -7,6 +7,7 @@ import NotFound from "./pages/not-found";
 import Home from "./pages/home";
 import ActivatePage from "./pages/activate";
 import SubscriptionPlansPage from "./pages/subscription-plans";
+import PlansPage from "./pages/plans";
 import MobileLinksPage from "./pages/mobile-links";
 
 // Import delle pagine della dashboard amministratore
@@ -18,6 +19,10 @@ import AdminSubscriptionPlansPage from "./pages/admin/subscription-plans";
 import ClientsPage from "./pages/admin/clients";
 import JobsPage from "./pages/admin/jobs";
 import CollaboratorsPage from "./pages/admin/collaborators";
+import CalendarPage from "./pages/admin/calendar";
+import ProfilePage from "./pages/admin/profile";
+import ReportsPage from "./pages/admin/reports";
+import UserSettingsPage from "./pages/admin/user-settings";
 import AdminClientDetailsPage from "./pages/admin/client-details";
 import AdminSectorsPage from "./pages/admin/settings/sectors";
 import AdminSettingsIndex from "./pages/admin/settings";
@@ -111,9 +116,7 @@ function Router() {
   if (location === '/checkout') {
     return <Redirect to="/mobile/checkout" />;
   }
-  if (location === '/plans') {
-    return <Redirect to="/mobile/plans" />;
-  }
+  // Don't redirect /plans to mobile - keep desktop plans page
 
   return (
     <Switch>
@@ -121,6 +124,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/activate" component={ActivatePage} />
       <Route path="/subscription-plans" component={SubscriptionPlansPage} />
+      <Route path="/plans" component={PlansPage} />
       <Route path="/mobile-links" component={MobileLinksPage} />
       
       {/* Rotte desktop */}
@@ -135,13 +139,19 @@ function Router() {
       <Route path="/admin" component={AdminLoginPage} />
       <Route path="/admin/login" component={AdminLoginPage} />
       <Route path="/admin/dashboard" component={AdminDashboard} />
-      <Route path="/admin/artisan-dashboard" component={ArtisanDashboard} />
       <Route path="/admin/subscription-plans" component={AdminSubscriptionPlansPage} />
+      
+      {/* Artisan Dashboard - accessible to all authenticated users */}
+      <Route path="/admin/artisan-dashboard" component={ArtisanDashboard} />
       
       {/* Rotte Artisan Dashboard */}
       <Route path="/admin/clients" component={ClientsPage} />
       <Route path="/admin/jobs" component={JobsPage} />
       <Route path="/admin/collaborators" component={CollaboratorsPage} />
+      <Route path="/admin/calendar" component={CalendarPage} />
+      <Route path="/admin/profile" component={ProfilePage} />
+      <Route path="/admin/reports" component={ReportsPage} />
+      <Route path="/admin/user-settings" component={UserSettingsPage} />
       <Route path="/admin/clients/:id" component={AdminClientDetailsPage} />
       <Route path="/admin/promo-spots">
         {() => {

@@ -49,6 +49,20 @@ export default function CheckoutPage() {
   const [showCompanyProfile, setShowCompanyProfile] = useState(false);
   const [companyData, setCompanyData] = useState<any>(null);
   
+  // Load user data from sessionStorage if available
+  useEffect(() => {
+    const tempUser = sessionStorage.getItem('tempUser');
+    if (tempUser) {
+      try {
+        const userData = JSON.parse(tempUser);
+        setEmail(userData.email || '');
+        setFullName(userData.fullName || userData.username || '');
+      } catch (error) {
+        console.error('Error parsing temp user data:', error);
+      }
+    }
+  }, []);
+  
   // Query per ottenere i dati del piano
   const { data: plan, isLoading, error } = useQuery<Plan>({
     queryKey: [`/api/subscription-plans/${planId}`],
@@ -181,11 +195,19 @@ export default function CheckoutPage() {
     try {
       setIsProcessing(true);
       
+      // Get user data from sessionStorage if available (from registration)
+      const tempUserStr = sessionStorage.getItem('tempUser');
+      const tempUser = tempUserStr ? JSON.parse(tempUserStr) : null;
+      
+      // Use temp user data if available, otherwise use form data
+      const userEmail = tempUser?.email || email;
+      const userFullName = tempUser?.fullName || fullName;
+      
       // Dati per la registrazione e sottoscrizione
       const subscriptionData = {
-        email,
-        fullName,
-        password,
+        email: userEmail,
+        fullName: userFullName,
+        password: password || 'TEMPORARY_PASSWORD_NOT_NEEDED', // Password already set during registration
         planId: parseInt(planId),
         billingType,
         paymentMethod,
@@ -206,13 +228,17 @@ export default function CheckoutPage() {
       
       if (response.ok) {
         const result = await response.json();
+        
+        // Clear temp user data
+        sessionStorage.removeItem('tempUser');
+        
         toast({
           title: t('checkout.subscriptionSuccessTitle', 'Abbonamento completato'),
           description: t('checkout.subscriptionSuccessDesc', 'La tua sottoscrizione è stata attivata con successo!'),
         });
         
-        // Redirect alla pagina di conferma
-        setLocation('/desktop/payment-success');
+        // Redirect to artisan dashboard
+        setLocation('/admin/artisan-dashboard');
       } else {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Errore durante la registrazione');

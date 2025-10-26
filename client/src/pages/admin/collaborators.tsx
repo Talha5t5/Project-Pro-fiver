@@ -422,11 +422,12 @@ export default function CollaboratorsPage() {
 
 
 
-  // Fetch collaborators
+  // Fetch collaborators - use mobile API for permission checks
   const { data: collaborators, isLoading, error } = useQuery({
-    queryKey: ["/api/collaborators"],
-    queryFn: () => apiRequest("GET", "/api/collaborators").then(res => res.json()),
-    enabled: true
+    queryKey: ["/api/mobile/collaborators"],
+    queryFn: () => apiRequest("GET", "/api/mobile/collaborators").then(res => res.json()),
+    enabled: true,
+    retry: false, // Don't retry on permission errors
   });
 
   // Filter collaborators
@@ -442,12 +443,12 @@ export default function CollaboratorsPage() {
     return matchesSearch && matchesRole && matchesStatus;
   }).map(ensureCollaboratorProperties) || [];
 
-  // Create collaborator mutation
+  // Create collaborator mutation - use mobile API for permission checks
   const createCollaboratorMutation = useMutation({
     mutationFn: (data: CollaboratorFormData) => 
-      apiRequest("POST", "/api/collaborators", data).then(res => res.json()),
+      apiRequest("POST", "/api/mobile/collaborators", data).then(res => res.json()),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/collaborators"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/mobile/collaborators"] });
       toast({
         title: t('collaborators.messages.created'),
         description: t('collaborators.messages.created'),
@@ -464,12 +465,12 @@ export default function CollaboratorsPage() {
     },
   });
 
-  // Update collaborator mutation
+  // Update collaborator mutation - use mobile API for permission checks
   const updateCollaboratorMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: CollaboratorFormData }) =>
-      apiRequest("PUT", `/api/collaborators/${id}`, data).then(res => res.json()),
+      apiRequest("PUT", `/api/mobile/collaborators/${id}`, data).then(res => res.json()),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/collaborators"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/mobile/collaborators"] });
       toast({
         title: t('collaborators.messages.updated'),
         description: t('collaborators.messages.updated'),
@@ -486,12 +487,12 @@ export default function CollaboratorsPage() {
     },
   });
 
-  // Delete collaborator mutation
+  // Delete collaborator mutation - use mobile API for permission checks
   const deleteCollaboratorMutation = useMutation({
     mutationFn: (id: number) =>
-      apiRequest("DELETE", `/api/collaborators/${id}`).then(res => res.json()),
+      apiRequest("DELETE", `/api/mobile/collaborators/${id}`).then(res => res.json()),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/collaborators"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/mobile/collaborators"] });
       toast({
         title: t('collaborators.messages.deleted'),
         description: t('collaborators.messages.deleted'),

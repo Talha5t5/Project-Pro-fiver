@@ -27,9 +27,9 @@ export default function AdminLogout() {
       } catch (error) {
         console.error('Logout error:', error);
       } finally {
-        // Always redirect to login page
+        // Always redirect to desktop login page
         setTimeout(() => {
-          setLocation('/admin/login');
+          setLocation('/desktop/auth');
         }, 1000);
       }
     };
@@ -54,14 +54,14 @@ export default function AdminLogout() {
             <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
           </div>
           <p className="text-sm text-gray-500 mb-4">
-            Verrai reindirizzato alla pagina di login
+            Verrai reindirizzato alla pagina di login desktop
           </p>
           <Button 
             variant="outline" 
-            onClick={() => setLocation('/admin/login')}
+            onClick={() => setLocation('/desktop/auth')}
             className="w-full"
           >
-            Vai al Login
+            Vai al Login Desktop
           </Button>
         </CardContent>
       </Card>

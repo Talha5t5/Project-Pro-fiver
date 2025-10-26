@@ -6,6 +6,17 @@ import { LanguageSelector } from '../../../components/ui/language-selector';
 export const DesktopNavbar: React.FC = () => {
   const { t } = useTranslation();
   const [location] = useLocation();
+
+  // Function to handle smooth scrolling to sections
+  const scrollToSection = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+  };
   
   return (
     <nav className="bg-white shadow-sm border-b">
@@ -27,30 +38,30 @@ export const DesktopNavbar: React.FC = () => {
               >
                 {t('navigation.home', 'Home')}
               </Link>
-              <Link
-                href="#features"
-                className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium"
+              <button
+                onClick={() => scrollToSection('features')}
+                className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium cursor-pointer"
               >
                 {t('navigation.features', 'Funzionalità')}
-              </Link>
-              <Link
-                href="#pricing"
-                className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium"
+              </button>
+              <button
+                onClick={() => scrollToSection('pricing')}
+                className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium cursor-pointer"
               >
                 {t('navigation.pricing', 'Prezzi')}
-              </Link>
-              <Link
-                href="#about"
-                className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium"
+              </button>
+              <button
+                onClick={() => scrollToSection('about')}
+                className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium cursor-pointer"
               >
                 {t('navigation.about', 'Chi Siamo')}
-              </Link>
-              <Link
-                href="#how-it-works"
-                className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium"
+              </button>
+              <button
+                onClick={() => scrollToSection('how-it-works')}
+                className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium cursor-pointer"
               >
                 {t('navigation.howItWorks', 'Come Funziona')}
-              </Link>
+              </button>
             </div>
           </div>
 

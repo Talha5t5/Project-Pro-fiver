@@ -25,6 +25,17 @@ export default function LandingPage() {
   const [location, setLocation] = useLocation();
   const { t } = useTranslation();
 
+  // Function to handle smooth scrolling to sections
+  const scrollToSection = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+  };
+
   // Caratteristiche del software per sezione
   const features = [
     {
@@ -138,8 +149,8 @@ export default function LandingPage() {
                   {t('landing.hero.ctaPrimary', 'Inizia la Prova Gratuita')}
                 </Link>
               </Button>
-              <Button variant="outline" size="lg" asChild>
-                <a href="#features">{t('landing.hero.ctaSecondary', 'Scopri di Più')}</a>
+              <Button variant="outline" size="lg" onClick={() => scrollToSection('features')}>
+                {t('landing.hero.ctaSecondary', 'Scopri di Più')}
               </Button>
             </div>
           </div>
@@ -282,10 +293,10 @@ export default function LandingPage() {
             <div>
               <h3 className="font-semibold mb-4">ProjectPro</h3>
               <ul className="space-y-2">
-                <li><a href="#" className="text-sm text-gray-500 hover:text-gray-900">{t('navigation.home', 'Home')}</a></li>
-                <li><a href="#features" className="text-sm text-gray-500 hover:text-gray-900">{t('navigation.features', 'Funzionalità')}</a></li>
-                <li><a href="#pricing" className="text-sm text-gray-500 hover:text-gray-900">{t('navigation.pricing', 'Prezzi')}</a></li>
-                <li><a href="#about" className="text-sm text-gray-500 hover:text-gray-900">{t('navigation.about', 'Chi Siamo')}</a></li>
+                <li><Link href="/desktop" className="text-sm text-gray-500 hover:text-gray-900">{t('navigation.home', 'Home')}</Link></li>
+                <li><button onClick={() => scrollToSection('features')} className="text-sm text-gray-500 hover:text-gray-900 cursor-pointer">{t('navigation.features', 'Funzionalità')}</button></li>
+                <li><button onClick={() => scrollToSection('pricing')} className="text-sm text-gray-500 hover:text-gray-900 cursor-pointer">{t('navigation.pricing', 'Prezzi')}</button></li>
+                <li><button onClick={() => scrollToSection('about')} className="text-sm text-gray-500 hover:text-gray-900 cursor-pointer">{t('navigation.about', 'Chi Siamo')}</button></li>
               </ul>
             </div>
             <div>

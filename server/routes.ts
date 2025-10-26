@@ -195,24 +195,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
         payment 
       } = req.body;
       
-      if (!email || !fullName || !password || !planId) {
-        return res.status(400).json({ error: "Email, nome completo, password e piano sono richiesti" });
+      // Basic validation
+      if (!email || !fullName || !planId) {
+        return res.status(400).json({ error: "Email, nome completo e piano sono richiesti" });
       }
       
-      // Check if user already exists
-      const existingUser = await storage.getUserByEmail(email);
-      if (existingUser) {
-        return res.status(400).json({ error: "Un utente con questa email esiste già" });
-      }
-      
-      // Get subscription plan
+      // Get subscription plan first to check if it's free
       const plan = await storage.getSubscriptionPlan(planId);
       if (!plan) {
         return res.status(404).json({ error: "Piano non trovato" });
       }
       
-      // Check if plan is free
       const isFreePlan = plan.isFree || parseFloat(plan.monthlyPrice) === 0;
+      
+      // For non-free plans, password is required
+      if (!isFreePlan && !password) {
+        return res.status(400).json({ error: "Password richiesta per piani a pagamento" });
+      }
+      
+      // Check if user already exists
+      let user;
+      const existingUser = await storage.getUserByEmail(email);
+      
+      if (existingUser) {
+        // User already exists, use existing user
+        user = existingUser;
+      } else {
+        // For free plans with placeholder password, just use existing user or return error
+        if (password === 'ALREADY_REGISTERED' || password === 'FREE_PLAN_AUTO' || password === 'TEMPORARY_PASSWORD_NOT_NEEDED') {
+          return res.status(400).json({ error: "Utente non trovato. Per favore registrati prima di attivare un piano." });
+        }
+        
+        // Create new user - password is required
+        if (!password) {
+          return res.status(400).json({ error: "Password richiesta per creare un nuovo utente" });
+        }
+        
+        // Hash password
+        const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
+        
+        // Create new user
+        user = await storage.createUser({
+          username: email.split('@')[0],
+          email,
+          password: hashedPassword,
+          fullName,
+          type: "client",
+          isActive: true,
+          language: "it"
+        });
+      }
       
       // Validate payment for paid plans
       if (!isFreePlan) {
@@ -279,20 +311,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Hash password
-      const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
-      
-      // Create new user
-      const newUser = await storage.createUser({
-        username: email.split('@')[0],
-        email,
-        password: hashedPassword,
-        fullName,
-        type: "client",
-        isActive: true,
-        language: "it"
-      });
-      
       // Calculate subscription dates
       const startDate = new Date();
       let endDate = new Date();
@@ -311,7 +329,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create subscription
       const subscription = await storage.createUserSubscription({
-        userId: newUser.id,
+        userId: user.id,
         planId,
         billingFrequency: billingType,
         startDate,
@@ -321,12 +339,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Set user session
       if (req.session) {
-        (req.session as any).userId = newUser.id;
-        (req.session as any).userType = newUser.type;
+        (req.session as any).userId = user.id;
+        (req.session as any).userType = user.type;
       }
       
       // Remove password from response
-      const { password: _, ...userResponse } = newUser;
+      const { password: _, ...userResponse } = user;
       
       return res.status(201).json({
         message: "Registrazione e abbonamento completati con successo",

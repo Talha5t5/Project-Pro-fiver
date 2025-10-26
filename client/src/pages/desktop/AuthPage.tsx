@@ -10,6 +10,7 @@ import { useToast } from '../../hooks/use-toast';
 import { Link } from 'wouter';
 import { Workflow, Briefcase, Calendar, Users, Shield } from 'lucide-react';
 import { LanguageSelector } from '../../components/ui/language-selector';
+import { mobileApiCall } from '../../mobile/utils/mobileApi';
 
 export default function AuthPage() {
   const [location, setLocation] = useLocation();
@@ -55,15 +56,9 @@ export default function AuthPage() {
     try {
       setIsLoggingIn(true);
       
-      const response = await fetch('/api/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: loginUsername,
-          password: loginPassword,
-        }),
+      const response = await mobileApiCall('POST', '/api/mobile/login', {
+        email: loginUsername,
+        password: loginPassword,
       });
       
       if (response.ok) {
@@ -74,7 +69,7 @@ export default function AuthPage() {
         
         // Reindirizza alla dashboard
         setTimeout(() => {
-          setLocation('/mobile/dashboard');
+          setLocation('/admin/artisan-dashboard');
         }, 1500);
       } else {
         const errorData = await response.json();
@@ -122,52 +117,44 @@ export default function AuthPage() {
     try {
       setIsRegistering(true);
       
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: registerUsername,
-          password: registerPassword,
-          email: registerEmail,
-          fullName: registerCompanyName,
-        }),
+      const response = await mobileApiCall('POST', '/api/mobile/register', {
+        email: registerEmail,
+        password: registerPassword,
+        fullName: registerCompanyName,
+        username: registerUsername,
       });
       
       if (response.ok) {
+        const userData = await response.json();
+        
         toast({
           title: t('auth.registrationSuccess', 'Registrazione completata'),
-          description: t('auth.registrationMessage', 'Account creato con successo! Ora puoi effettuare il login.'),
+          description: t('auth.registrationMessage', 'Account creato con successo! Seleziona il tuo piano.'),
         });
         
-        // Se è un flusso trial, reindirizza al checkout con il piano free
-        try {
-          const url = new URL(location, window.location.origin);
-          const trial = url.searchParams.get('trial');
-          if (trial === '1') {
-            // Recupera piani e trova quello gratuito
-            const res = await fetch('/api/subscription-plans');
-            if (res.ok) {
-              const plans = await res.json();
-              const freePlan = plans.find((p: any) => p.isFree);
-              if (freePlan) {
-                setLocation(`/desktop/checkout/${freePlan.id}/monthly`);
-                return;
-              }
-            }
-          }
-        } catch {}
-
+        // Store user data temporarily for subscription flow
+        if (userData) {
+          sessionStorage.setItem('tempUser', JSON.stringify(userData));
+        }
+        
+        // Check if there's a pending plan to activate
+        const pendingPlanStr = sessionStorage.getItem('pendingPlan');
+        
         // Reset dei campi del form
         setRegisterUsername('');
         setRegisterPassword('');
         setRegisterConfirmPassword('');
         setRegisterEmail('');
         setRegisterCompanyName('');
-        
-        // Passa alla scheda di login
-        setActiveTab('login');
+
+        // If there's a pending plan, redirect back to plans to activate it
+        if (pendingPlanStr) {
+          sessionStorage.removeItem('pendingPlan');
+          setLocation('/plans');
+        } else {
+          // Otherwise, redirect to plans page to select a plan
+          setLocation('/plans');
+        }
       } else {
         const errorData = await response.json();
         toast({

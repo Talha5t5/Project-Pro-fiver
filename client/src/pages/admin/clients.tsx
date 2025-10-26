@@ -67,6 +67,17 @@ export default function ClientsPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
 
+  // Check if user has client management permissions
+  const { data: currentUser } = useQuery({
+    queryKey: ["/api/mobile/user"],
+    queryFn: () => apiRequest("GET", "/api/mobile/user").then(res => res.json()),
+    enabled: true
+  });
+
+  // Check if user has client creation permission - use correct feature names
+  const hasClientPermission = currentUser?.permissions?.includes('client.create') || 
+                             currentUser?.planFeatures?.client_management === true;
+
   // Form setup
   const form = useForm<ClientFormData>({
     resolver: zodResolver(clientSchema),
@@ -88,19 +99,20 @@ export default function ClientsPage() {
     },
   });
 
-  // Fetch clients data
+  // Fetch clients data - use mobile API for permission checks
   const { data: clients = [], isLoading, error } = useQuery({
-    queryKey: ["/api/clients"],
-    queryFn: () => apiRequest("GET", "/api/clients").then(res => res.json()),
+    queryKey: ["/api/mobile/clients"],
+    queryFn: () => apiRequest("GET", "/api/mobile/clients").then(res => res.json()),
     enabled: true,
+    retry: false, // Don't retry on permission errors
   });
 
-     // Create client mutation
+     // Create client mutation - use mobile API for permission checks
    const createClientMutation = useMutation({
      mutationFn: (data: ClientFormData) => 
-       apiRequest("POST", "/api/clients", data).then(res => res.json()),
+       apiRequest("POST", "/api/mobile/clients", data).then(res => res.json()),
      onSuccess: () => {
-       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+       queryClient.invalidateQueries({ queryKey: ["/api/mobile/clients"] });
        toast({
          title: t('clients.messages.created'),
          description: t('clients.messages.created'),
@@ -117,12 +129,12 @@ export default function ClientsPage() {
      },
    });
 
-     // Update client mutation
+     // Update client mutation - use mobile API for permission checks
    const updateClientMutation = useMutation({
      mutationFn: ({ id, data }: { id: number; data: ClientFormData }) =>
-       apiRequest("PUT", `/api/clients/${id}`, data).then(res => res.json()),
+       apiRequest("PUT", `/api/mobile/clients/${id}`, data).then(res => res.json()),
      onSuccess: () => {
-       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+       queryClient.invalidateQueries({ queryKey: ["/api/mobile/clients"] });
        toast({
          title: t('clients.messages.updated'),
          description: t('clients.messages.updated'),
@@ -139,12 +151,12 @@ export default function ClientsPage() {
      },
    });
 
-   // Delete client mutation
+   // Delete client mutation - use mobile API for permission checks
    const deleteClientMutation = useMutation({
      mutationFn: (id: number) =>
-       apiRequest("DELETE", `/api/clients/${id}`).then(res => res.json()),
+       apiRequest("DELETE", `/api/mobile/clients/${id}`).then(res => res.json()),
      onSuccess: () => {
-       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+       queryClient.invalidateQueries({ queryKey: ["/api/mobile/clients"] });
        toast({
          title: t('clients.messages.deleted'),
          description: t('clients.messages.deleted'),
@@ -242,13 +254,14 @@ export default function ClientsPage() {
             <Button variant="outline" onClick={() => setLocation("/admin/artisan-dashboard")}>
               {t('clients.backToDashboard')}
             </Button>
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  {t('clients.newClient')}
-                </Button>
-              </DialogTrigger>
+            {hasClientPermission && (
+              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    {t('clients.newClient')}
+                  </Button>
+                </DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>
@@ -502,6 +515,7 @@ export default function ClientsPage() {
                 </Form>
               </DialogContent>
             </Dialog>
+            )}
           </div>
         </div>
       </header>
@@ -556,7 +570,7 @@ export default function ClientsPage() {
                    : t('clients.startCreating')
                  }
                </p>
-               {!searchTerm && (
+               {!searchTerm && hasClientPermission && (
                  <Button onClick={() => setIsCreateDialogOpen(true)}>
                    <Plus className="h-4 w-4 mr-2" />
                    {t('clients.createFirstClient')}

@@ -23,7 +23,7 @@ import {
   TableRow,
 } from "../../../components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui/tabs";
-import { ArrowLeft, Plus, Pencil, Trash2, UserPlus, User, UserCog, Shield } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Trash2, UserPlus, User, UserCog, Shield, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 // Schema per la validazione del form degli admin
@@ -48,6 +48,18 @@ export default function UsersPage() {
   const [activeTab, setActiveTab] = useState("all");
   const [isPlanDialogOpen, setIsPlanDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
+
+  // Function to refresh all data
+  const refreshData = () => {
+    queryClient.invalidateQueries({ queryKey: ["/api/user-subscriptions"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/subscription-plans"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/administrators"] });
+    toast({
+      title: "Data Refreshed",
+      description: "All user data has been refreshed",
+      variant: "default",
+    });
+  };
 
   // Query per ottenere gli amministratori e gli utenti
   const { data: administrators = [], isLoading: isLoadingAdmins } = useQuery({
@@ -74,6 +86,7 @@ export default function UsersPage() {
       const response = await apiRequest("/api/user-subscriptions");
       return await response.json();
     },
+    staleTime: 0, // Always fetch fresh data
   });
   
   // Query per ottenere i piani di abbonamento
@@ -192,8 +205,8 @@ export default function UsersPage() {
       
       if (userSubscriptions.length > 0) {
         // Se ha già una sottoscrizione, aggiorna quella esistente (la più recente)
-        const latestSubscription = userSubscriptions.reduce((latest, current) => 
-          current.id > latest.id ? current : latest
+        const latestSubscription = userSubscriptions.reduce((latest: any, current: any) => 
+          new Date(current.createdAt) > new Date(latest.createdAt) ? current : latest
         );
         
         return apiRequest("PUT", `/api/user-subscriptions/${latestSubscription.id}`, {
@@ -297,7 +310,7 @@ export default function UsersPage() {
     // Trova il piano attuale dell'utente
     const userSubscriptions = subscriptions.filter((s: any) => s.userId === user.id && s.status === 'active');
     const currentSubscription = userSubscriptions.length > 0 
-      ? userSubscriptions.reduce((latest, current) => current.id > latest.id ? current : latest)
+      ? userSubscriptions.reduce((latest: any, current: any) => new Date(current.createdAt) > new Date(latest.createdAt) ? current : latest)
       : null;
     
     planForm.reset({
@@ -321,6 +334,10 @@ export default function UsersPage() {
           <Button variant="outline" onClick={() => setLocation("/admin/dashboard")} className="flex items-center gap-2">
             <ArrowLeft size={16} />
             {t('common.back')} {t('admin.dashboard.dashboard')}
+          </Button>
+          <Button variant="outline" onClick={refreshData} className="flex items-center gap-2">
+            <RefreshCw size={16} />
+            Refresh Data
           </Button>
           <h1 className="text-3xl font-bold">{t('admin.users.title')}</h1>
         </div>
@@ -400,7 +417,7 @@ export default function UsersPage() {
                       
                       const userSubscription = userSubscriptions.length > 0 
                         ? userSubscriptions.reduce((latest, current) => 
-                            current.id > latest.id ? current : latest
+                            new Date(current.createdAt) > new Date(latest.createdAt) ? current : latest
                           )
                         : null;
                       
