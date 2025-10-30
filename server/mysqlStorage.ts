@@ -466,7 +466,18 @@ export class MySQLStorage implements IStorage {
   async createSubscriptionPlan(plan: InsertSubscriptionPlan): Promise<SubscriptionPlan> {
     await this.ensureInitialized();
     const result = await this.db.insert(subscriptionPlans).values(plan);
-    const newPlan = await this.getSubscriptionPlan(result.insertId);
+    // Drizzle/mysql2 may return OkPacket or OkPacket[] depending on driver/config
+    let insertId = Array.isArray(result) ? (result[0] as any)?.insertId : (result as any)?.insertId;
+    // Fallback if insertId not present
+    if (!insertId) {
+      try {
+        const [last] = await this.db.select().from(subscriptionPlans).orderBy(desc(subscriptionPlans.id)).limit(1);
+        if (last?.id) insertId = last.id;
+      } catch {
+        // ignore; will throw below if still undefined
+      }
+    }
+    const newPlan = insertId ? await this.getSubscriptionPlan(insertId) : undefined;
     if (!newPlan) throw new Error('Failed to create subscription plan');
     return newPlan;
   }
@@ -762,8 +773,20 @@ export class MySQLStorage implements IStorage {
         appName: newSettings.appName || "ProjectPro",
         defaultLanguage: newSettings.defaultLanguage || "it",
         enableEmailNotifications: newSettings.enableEmailNotifications ?? null,
-        enableWhatsAppNotifications: newSettings.enableWhatsAppNotifications ?? null
-      };
+        enableWhatsAppNotifications: newSettings.enableWhatsAppNotifications ?? null,
+        defaultNotificationTime: (newSettings as any).defaultNotificationTime ?? null,
+        dateFormat: (newSettings as any).dateFormat ?? null,
+        timeFormat: (newSettings as any).timeFormat ?? null,
+        timezone: (newSettings as any).timezone ?? null,
+        weekStartsOn: (newSettings as any).weekStartsOn ?? null,
+        sessionTimeout: (newSettings as any).sessionTimeout ?? null,
+        passwordMinLength: (newSettings as any).passwordMinLength ?? null,
+        passwordRequireNumbers: (newSettings as any).passwordRequireNumbers ?? null,
+        passwordRequireSpecialChars: (newSettings as any).passwordRequireSpecialChars ?? null,
+        defaultPageSize: (newSettings as any).defaultPageSize ?? null,
+        maxUploadFileSize: (newSettings as any).maxUploadFileSize ?? null,
+        allowedFileTypes: (newSettings as any).allowedFileTypes ?? null,
+      } as any;
     }
   }
 }

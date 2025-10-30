@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import { Switch, Route, useLocation, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -49,10 +49,10 @@ import DesktopPaymentSuccessPage from "./pages/desktop/PaymentSuccessPage";
 
 // Import della app mobile
 import MobileApp from "./mobile/MobileApp";
-import MobileWelcome from "./mobile/pages/Welcome";
-import { MobileAuthProvider } from "./mobile/contexts/MobileAuthContext";
+// import MobileWelcome from "./mobile/pages/Welcome";
+// import { MobileAuthProvider } from "./mobile/contexts/MobileAuthContext";
 import WelcomeRedirect from "./pages/welcome-redirect";
-import LanguageTestPage from "./pages/language-test";
+// import LanguageTestPage from "./pages/language-test";
 import { initializeLanguage } from "./i18n";
 
 function Router() {
@@ -70,10 +70,9 @@ function Router() {
 
   console.log("Current location:", location);
   
-  // Allow access to all three interfaces instead of redirecting everything to mobile
-  // Main route shows web registration landing page
+  // Default to desktop experience on root
   if (location === '/') {
-    return <Redirect to="/mobile" />;
+    return <Redirect to="/desktop" />;
   }
   
   // Mobile app routes - accessible via /mobile prefix
