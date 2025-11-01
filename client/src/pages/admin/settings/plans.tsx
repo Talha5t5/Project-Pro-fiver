@@ -33,7 +33,8 @@ const availableFeatures = [
   { id: 'notifications', name: 'Notifiche', description: 'Sistema di notifiche via email e WhatsApp' }
 ];
 
-// Pagine disponibili nel sistema
+// Pagine disponibili nel sistema - Commented out (Pages tab disabled)
+/*
 const availablePages = [
   { id: 'dashboard', name: 'Dashboard', description: 'Pannello di controllo principale' },
   { id: 'clients', name: 'Clienti', description: 'Gestione dei clienti' },
@@ -47,6 +48,7 @@ const availablePages = [
   { id: 'invoices', name: 'Fatture', description: 'Gestione delle fatture' },
   { id: 'materials', name: 'Materiali', description: 'Gestione dei materiali' }
 ];
+*/
 
 // Schema per la validazione del form
 const formSchema = z.object({
@@ -660,7 +662,7 @@ export default function AdminSettingsPlansPage() {
                 <Tabs defaultValue="features">
                   <TabsList className="mb-4 w-full">
                     <TabsTrigger value="features">{t("features")}</TabsTrigger>
-                    <TabsTrigger value="pages">{t("pages")}</TabsTrigger>
+                    {/* <TabsTrigger value="pages">{t("pages")}</TabsTrigger> */}
                     <TabsTrigger value="fields">{t("visible_fields")}</TabsTrigger>
                     <TabsTrigger value="permissions">{t("permissions")}</TabsTrigger>
                   </TabsList>
@@ -783,6 +785,7 @@ export default function AdminSettingsPlansPage() {
                     />
                   </TabsContent>
                   
+                  {/* Pages Tab - Commented Out
                   <TabsContent value="pages">
                     <FormField
                       control={form.control}
@@ -845,6 +848,7 @@ export default function AdminSettingsPlansPage() {
                       }}
                     />
                   </TabsContent>
+                  */}
                   
                   <TabsContent value="fields">
                     <FormField
@@ -962,7 +966,13 @@ export default function AdminSettingsPlansPage() {
                             newFeatures.visible_fields = {};
                           }
                           if (!newFeatures.visible_fields[entity]) {
-                            newFeatures.visible_fields[entity] = [];
+                            // Initialize with all field IDs from this entity (all visible by default)
+                            const entityFieldList = (entityFields as any)[entity];
+                            if (entityFieldList) {
+                              newFeatures.visible_fields[entity] = entityFieldList.map((f: any) => f.id);
+                            } else {
+                              newFeatures.visible_fields[entity] = [];
+                            }
                           }
                           
                           if (isVisible) {

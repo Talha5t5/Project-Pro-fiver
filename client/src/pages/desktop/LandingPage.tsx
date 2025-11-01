@@ -125,7 +125,10 @@ export default function LandingPage() {
   
   // Funzione per gestire la selezione di un piano
   const handleSelectPlan = (planId: number, billingType: 'monthly' | 'annual') => {
-    setLocation(`/desktop/checkout/${planId}/${billingType}`);
+    // Store plan selection in sessionStorage for later use
+    sessionStorage.setItem('selectedPlan', JSON.stringify({ planId, billingType }));
+    // Redirect to desktop auth/registration page
+    setLocation('/desktop/auth');
   };
 
   return (

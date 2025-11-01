@@ -219,10 +219,10 @@ export default function AuthPage() {
                 <CardContent>
                   <form onSubmit={handleLogin} className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="username">{t('auth.usernameLabel', 'Username o Email')}</Label>
+                      <Label htmlFor="username">{t('auth.usernameLabel', 'Email')}</Label>
                       <Input 
                         id="username" 
-                        placeholder={t('auth.usernamePlaceholder', 'Il tuo username o email')}
+                        placeholder={t('auth.usernamePlaceholder', 'Email')}
                         value={loginUsername}
                         onChange={(e) => setLoginUsername(e.target.value)}
                       />
@@ -255,7 +255,7 @@ export default function AuthPage() {
                   </form>
                 </CardContent>
                 <CardFooter className="flex flex-col space-y-4">
-                  <div className="text-sm text-center text-gray-500">
+                  {/* <div className="text-sm text-center text-gray-500">
                     {t('auth.noAccount', 'Non hai un account?')}
                     <button
                       onClick={() => setActiveTab('register')}
@@ -263,7 +263,7 @@ export default function AuthPage() {
                     >
                       {t('auth.registerNow', 'Registrati ora')}
                     </button>
-                  </div>
+                  </div> */}
                   <div className="text-xs text-center text-gray-500">
                     {t('auth.termsOfService', 'Accedendo, accetti i')}{" "}
                     <a href="#" className="hover:underline">
