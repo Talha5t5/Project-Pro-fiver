@@ -194,22 +194,22 @@ export class PlanEnforcementService {
     const planAllowed = planPermissions[permissionId] === true;
     console.log(`🔍 Plan permission check: ${permissionId} = ${planAllowed}`);
 
-    // If plan disallows, short-circuit
-    if (!planAllowed) {
-      console.log(`❌ Plan disallows ${permissionId} for user ${userId}`);
-      return false;
+    // If plan allows, grant permission (plan permissions take priority)
+    if (planAllowed) {
+      console.log(`✅ Plan allows ${permissionId} for user ${userId}`);
+      return true;
     }
 
-    // Apply role-based restriction (AND with plan). If no role set, do not restrict further.
+    // If plan doesn't explicitly allow, check role capabilities as fallback
     const roleCaps = await this.getUserRoleCapabilities(userId);
     console.log(`🔍 Role capabilities for user ${userId}:`, roleCaps);
     
     if (!roleCaps) {
-      console.log(`✅ No role restrictions for user ${userId}, allowing based on plan`);
-      return planAllowed;
+      console.log(`❌ No plan permission and no role for user ${userId}`);
+      return false;
     }
 
-    // If a role is present, require the capability to be explicitly true
+    // Check if role grants the permission
     const roleAllowed = roleCaps[permissionId] === true;
     console.log(`🔍 Role permission check: ${permissionId} = ${roleAllowed}`);
     console.log(`🔍 Final permission result: ${permissionId} = ${roleAllowed}`);

@@ -18,6 +18,7 @@ CREATE TABLE `activities` (
 	`name` text NOT NULL,
 	`job_type_id` int NOT NULL,
 	`job_type_ids` text,
+	`sector_ids` text,
 	`description` text,
 	`implementation_notes` text,
 	`default_duration` decimal(5,2),

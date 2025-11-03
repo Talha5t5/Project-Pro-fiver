@@ -263,7 +263,8 @@ export class MySQLStorage implements IStorage {
   async createActivity(activity: InsertActivity): Promise<Activity> {
     await this.ensureInitialized();
     const result = await this.db.insert(activities).values(activity);
-    const newActivity = await this.getActivity(result.insertId);
+    const insertId = Array.isArray(result) ? result[0].insertId : result.insertId;
+    const newActivity = await this.getActivity(insertId);
     if (!newActivity) throw new Error('Failed to create activity');
     return newActivity;
   }
