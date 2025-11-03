@@ -1,10 +1,11 @@
-import { mysqlTable, text, serial, int, boolean, timestamp, decimal, primaryKey, varchar } from "drizzle-orm/mysql-core";
+import { sql } from "drizzle-orm";
+import { mysqlTable, text, bigint, int, boolean, timestamp, decimal, primaryKey, varchar } from "drizzle-orm/mysql-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Tabella per i settori
 export const sectors = mysqlTable("sectors", {
-  id: serial("id").primaryKey(),
+  id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
   isActive: boolean("is_active").default(true),
@@ -19,7 +20,7 @@ export const insertSectorSchema = createInsertSchema(sectors).pick({
 
 // Tabella per le impostazioni generali
 export const generalSettings = mysqlTable("general_settings", {
-  id: serial("id").primaryKey(),
+  id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
   appName: varchar("application_name", { length: 255 }).notNull().default("Project Management"),
   defaultLanguage: varchar("default_language", { length: 10 }).notNull().default("it"),
   enableEmailNotifications: boolean("enable_email_notifications").default(true),
@@ -37,7 +38,7 @@ export const generalSettings = mysqlTable("general_settings", {
   maxUploadFileSize: int("max_upload_file_size").default(10),
   allowedFileTypes: varchar("allowed_file_types", { length: 500 }).default("jpg,jpeg,png,pdf,doc,docx,xls,xlsx"),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
 });
 
 export const insertGeneralSettingsSchema = createInsertSchema(generalSettings).pick({
@@ -60,13 +61,13 @@ export const insertGeneralSettingsSchema = createInsertSchema(generalSettings).p
 });
 
 export const users = mysqlTable("users", {
-  id: serial("id").primaryKey(),
+  id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
   username: varchar("username", { length: 255 }).notNull().unique(),
   password: text("password").notNull(),
   fullName: text("full_name").notNull(),
   email: text("email"),
   phone: text("phone"),
-  roleId: int("role_id"),
+  roleId: bigint("role_id", { mode: "number", unsigned: true }),
   type: text("type").default("admin"), // admin, client, collaborator
   isActive: boolean("is_active").default(true),
   language: text("language").default("it"),
@@ -87,7 +88,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
 
 // Tabella per i piani di abbonamento
 export const subscriptionPlans = mysqlTable("subscription_plans", {
-  id: serial("id").primaryKey(),
+  id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
   monthlyPrice: decimal("monthly_price", { precision: 10, scale: 2 }).notNull(),
@@ -114,15 +115,15 @@ export const insertSubscriptionPlanSchema = createInsertSchema(subscriptionPlans
 
 // Tabella per le sottoscrizioni utente
 export const userSubscriptions = mysqlTable("user_subscriptions", {
-  id: serial("id").primaryKey(),
-  userId: int("user_id").notNull(),
-  planId: int("plan_id").notNull(), 
+  id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
+  userId: bigint("user_id", { mode: "number", unsigned: true }).notNull(),
+  planId: bigint("plan_id", { mode: "number", unsigned: true }).notNull(), 
   startDate: timestamp("start_date").defaultNow().notNull(),
-  endDate: timestamp("end_date"),
+  endDate: timestamp("end_date").defaultNow(),
   billingFrequency: text("billing_frequency").default("monthly"), // monthly, yearly
   status: text("status").default("active"), // active, cancelled, expired, trial
-  lastBillingDate: timestamp("last_billing_date"),
-  nextBillingDate: timestamp("next_billing_date"),
+  lastBillingDate: timestamp("last_billing_date").defaultNow(),
+  nextBillingDate: timestamp("next_billing_date").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -138,7 +139,7 @@ export const insertUserSubscriptionSchema = createInsertSchema(userSubscriptions
 });
 
 export const clients = mysqlTable("clients", {
-  id: serial("id").primaryKey(),
+  id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
   name: text("name").notNull(),
   type: text("type").notNull().default('residential'), // residential, commercial, industrial
   phone: text("phone"),
@@ -160,13 +161,13 @@ export const insertClientSchema = createInsertSchema(clients).pick({
 });
 
 export const jobs = mysqlTable("jobs", {
-  id: serial("id").primaryKey(),
+  id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
   title: text("title").notNull(),
-  clientId: int("client_id").notNull(),
+  clientId: bigint("client_id", { mode: "number", unsigned: true }).notNull(),
   type: text("type").notNull(), // repair, installation, maintenance, quote, emergency
   status: text("status").notNull().default('scheduled'), // scheduled, in_progress, completed, cancelled
   startDate: timestamp("start_date").notNull(),
-  endDate: timestamp("end_date"), // Data di fine calcolata
+  endDate: timestamp("end_date").defaultNow(), // Data di fine calcolata
   duration: decimal("duration", { precision: 5, scale: 2 }).notNull(), // Duration in hours
   hourlyRate: decimal("hourly_rate", { precision: 10, scale: 2 }).notNull(),
   materialsCost: decimal("materials_cost", { precision: 10, scale: 2 }).default("0"),
@@ -174,9 +175,9 @@ export const jobs = mysqlTable("jobs", {
   laborCost: decimal("labor_cost", { precision: 10, scale: 2 }).default("0"), // Labor cost
   location: text("location"),
   notes: text("notes"),
-  assignedUserId: int("assigned_user_id"), // User assigned to this job
+  assignedUserId: bigint("assigned_user_id", { mode: "number", unsigned: true }), // User assigned to this job
   createdAt: timestamp("created_at").defaultNow().notNull(),
-  completedDate: timestamp("completed_date"),
+  completedDate: timestamp("completed_date").defaultNow(),
   actualDuration: decimal("actual_duration", { precision: 5, scale: 2 }),
   photos: text("photos"), // URLs of photos (JSON array as text)
   // Plan-related fields for activity management
@@ -210,9 +211,9 @@ export const insertJobSchema = createInsertSchema(jobs).pick({
 
 // Modelli per le attività e i collaboratori
 export const activities = mysqlTable("activities", {
-  id: serial("id").primaryKey(),
+  id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
   name: text("name").notNull(),
-  jobTypeId: int("job_type_id").notNull(), // Foreign key to job_types (per retrocompatibilità)
+  jobTypeId: bigint("job_type_id", { mode: "number", unsigned: true }).notNull(), // Foreign key to job_types (per retrocompatibilità)
   jobTypeIds: text("job_type_ids"), // JSON con array di ID per supportare più tipi di lavoro
   sectorIds: text("sector_ids"), // JSON con array di ID per supportare più settori
   description: text("description"),
@@ -235,7 +236,7 @@ export const insertActivitySchema = createInsertSchema(activities).pick({
 });
 
 export const jobTypes = mysqlTable("job_types", {
-  id: serial("id").primaryKey(),
+  id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
   name: varchar("name", { length: 255 }).notNull().unique(),
   description: text("description"),
   sectorIds: text("sector_ids"), // JSON con array di ID per supportare più settori
@@ -275,11 +276,11 @@ export const updateJobTypeSchema = insertJobTypeSchema.partial().extend({
 });
 
 export const roles = mysqlTable("roles", {
-  id: serial("id").primaryKey(),
+  id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
   name: varchar("name", { length: 255 }).notNull().unique(),
   description: text("description"),
   permissions: text("permissions"), // Array of permission strings (JSON as text)
-  sectorId: int("sector_id"),
+  sectorId: bigint("sector_id", { mode: "number", unsigned: true }),
   isDefault: boolean("is_default").default(false),
 });
 
@@ -299,9 +300,9 @@ export const insertRoleSchema = createInsertSchema(roles).pick({
 });
 
 export const collaborators = mysqlTable("collaborators", {
-  id: serial("id").primaryKey(),
+  id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
   name: text("name").notNull(),
-  roleId: int("role_id"), // Primary role for backward compatibility (nullable)
+  roleId: bigint("role_id", { mode: "number", unsigned: true }), // Primary role for backward compatibility (nullable)
   roleIds: text("role_ids").notNull(), // JSON array of role IDs for multiple roles
   phone: text("phone"),
   email: text("email"),
@@ -334,13 +335,13 @@ export const insertCollaboratorSchema = createInsertSchema(collaborators).pick({
 
 // Job activity assignments
 export const jobActivities = mysqlTable("job_activities", {
-  id: serial("id").primaryKey(),
-  jobId: int("job_id").notNull(),
-  activityId: int("activity_id").notNull(),
+  id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
+  jobId: bigint("job_id", { mode: "number", unsigned: true }).notNull(),
+  activityId: bigint("activity_id", { mode: "number", unsigned: true }).notNull(),
   startDate: timestamp("start_date").notNull(),
   duration: decimal("duration", { precision: 5, scale: 2 }).notNull(),
   status: text("status").default('scheduled'), // scheduled, in_progress, completed, cancelled
-  completedDate: timestamp("completed_date"),
+  completedDate: timestamp("completed_date").defaultNow(),
   actualDuration: decimal("actual_duration", { precision: 5, scale: 2 }),
   notes: text("notes"),
   photos: text("photos"), // URLs of photos (JSON array as text)
@@ -360,8 +361,8 @@ export const insertJobActivitySchema = createInsertSchema(jobActivities).pick({
 
 // Activity-collaborator assignments
 export const activityCollaborators = mysqlTable("activity_collaborators", {
-  activityId: int("activity_id").notNull(),
-  collaboratorId: int("collaborator_id").notNull(),
+  activityId: bigint("activity_id", { mode: "number", unsigned: true }).notNull(),
+  collaboratorId: bigint("collaborator_id", { mode: "number", unsigned: true }).notNull(),
 }, (table) => ({
   pk: primaryKey({ columns: [table.activityId, table.collaboratorId] }),
 }));
@@ -370,7 +371,7 @@ export const insertActivityCollaboratorSchema = createInsertSchema(activityColla
 
 // Tabella per gli Spot (promozioni)
 export const promotionalSpots = mysqlTable("promotional_spots", {
-  id: serial("id").primaryKey(),
+  id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
   title: text("title").notNull(),
   content: text("content"),
   redirectUrl: text("redirect_url"),
@@ -386,7 +387,7 @@ export const promotionalSpots = mysqlTable("promotional_spots", {
   endTime: text("end_time"),
   // Periodo di visibilità
   startDate: timestamp("start_date"), // Data di inizio validità spot
-  endDate: timestamp("end_date"),     // Data di fine validità spot
+  endDate: timestamp("end_date").defaultNow(),     // Data di fine validità spot
   dailyFrequency: int("daily_frequency").default(1), // Quante volte al giorno mostrare lo spot
   weeklySchedule: text("weekly_schedule"), // Giorni della settimana (0-6 dove 0 è Domenica) (JSON as text)
   // Pagine in cui lo spot è visibile (all = tutte le pagine, oppure array di percorsi specifici)
@@ -397,7 +398,7 @@ export const promotionalSpots = mysqlTable("promotional_spots", {
   displayDuration: int("display_duration").default(10), // Durata visualizzazione in secondi (per popup)
   displayInterval: int("display_interval").default(0), // Intervallo di ripetizione in secondi (0 = sempre visibile)
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
 });
 
 export const insertPromotionalSpotSchema = createInsertSchema(promotionalSpots)
@@ -486,7 +487,7 @@ export const insertPromotionalSpotSchema = createInsertSchema(promotionalSpots)
 
 // Tabella per le pagine web CMS
 export const webPages = mysqlTable("web_pages", {
-  id: serial("id").primaryKey(),
+  id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
   title: text("title").notNull(),
   slug: varchar("slug", { length: 255 }).notNull().unique(),
   content: text("content").notNull(),
@@ -496,9 +497,9 @@ export const webPages = mysqlTable("web_pages", {
   metaTitle: text("meta_title"),
   metaDescription: text("meta_description"),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-  publishedAt: timestamp("published_at"),
-  authorId: int("author_id").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
+  publishedAt: timestamp("published_at").defaultNow(),
+  authorId: bigint("author_id", { mode: "number", unsigned: true }).notNull(),
   isHomepage: boolean("is_homepage").default(false),
   sortOrder: int("sort_order").default(0),
 });
@@ -519,14 +520,14 @@ export const insertWebPageSchema = createInsertSchema(webPages).pick({
 
 // Tabella per le configurazioni personalizzate dei piani per i clienti
 export const planConfigurations = mysqlTable("plan_configurations", {
-  id: serial("id").primaryKey(),
-  userId: int("user_id").notNull(), // ID dell'utente/cliente
-  planId: int("plan_id").notNull(), // ID del piano di abbonamento di riferimento
+  id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
+  userId: bigint("user_id", { mode: "number", unsigned: true }).notNull(), // ID dell'utente/cliente
+  planId: bigint("plan_id", { mode: "number", unsigned: true }).notNull(), // ID del piano di abbonamento di riferimento
   features: text("features"), // Configurazione personalizzata delle funzionalità (JSON as text)
   limits: text("limits"), // Limiti personalizzati (es. numero max clienti) (JSON as text)
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow(),
 });
 
 export const insertPlanConfigurationSchema = createInsertSchema(planConfigurations).pick({
