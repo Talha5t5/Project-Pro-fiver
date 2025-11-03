@@ -52,6 +52,42 @@ export default function AdminLoginPage() {
     setIsLoading(true);
     
     try {
+      // Try mobile login first (for artisan users)
+      const mobileResponse = await fetch("/api/mobile/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: data.username,
+          password: data.password,
+        }),
+      });
+      
+      if (mobileResponse.ok) {
+        const mobileResult = await mobileResponse.json();
+        
+        // Store mobile session ID in localStorage
+        if (mobileResult.mobileSessionId) {
+          localStorage.setItem('mobileSessionId', mobileResult.mobileSessionId);
+          console.log('✅ Mobile session stored:', mobileResult.mobileSessionId);
+          console.log('✅ Stored in localStorage, can read:', localStorage.getItem('mobileSessionId'));
+        }
+        
+        toast({
+          title: "Login successful",
+          description: "Benvenuto su ProjectPro!",
+        });
+        
+        // Small delay to ensure localStorage is written
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Redirect to Artisan dashboard
+        setLocation("/artisan/dashboard");
+        return;
+      }
+      
+      // If mobile login fails, try admin login
       const response = await fetch("/api/admin/login", {
         method: "POST",
         headers: {
@@ -76,13 +112,6 @@ export default function AdminLoginPage() {
         });
         // Redirect to Super Admin dashboard
         setLocation("/admin/dashboard");
-      } else if (userRole === 'administrator') {
-        toast({
-          title: "Login effettuato con successo",
-          description: "Benvenuto nel pannello Artigiano",
-        });
-        // Redirect to Artisan dashboard
-        setLocation("/admin/artisan-dashboard");
       } else {
         toast({
           title: "Login effettuato con successo",

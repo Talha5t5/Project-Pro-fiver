@@ -8,11 +8,38 @@ import { apiRequest } from "../../lib/queryClient";
 import { Badge } from "../../components/ui/badge";
 import { LanguageSelector } from "../../components/ui/language-selector";
 import { useTranslation } from "react-i18next";
+import { useArtisanPermissions } from "../../hooks/useArtisanPermissions";
+import { useToast } from "../../hooks/use-toast";
 
 
 export default function ArtisanDashboard() {
   const [, setLocation] = useLocation();
   const { t, i18n } = useTranslation();
+  
+  // Debug: Check if mobileSessionId exists
+  useEffect(() => {
+    const sessionId = localStorage.getItem('mobileSessionId');
+    console.log('🔍 Dashboard loaded - mobileSessionId from localStorage:', sessionId);
+    if (!sessionId) {
+      console.warn('⚠️ No mobile session found! Redirecting to login...');
+      setLocation('/artisan/login');
+    }
+  }, [setLocation]);
+  
+  // Get permissions using the hook (same as mobile app)
+  const {
+    permissions,
+    features,
+    planConfig,
+    isLoading: permissionsLoading,
+    canViewClients,
+    canViewJobs,
+    canManageCollaborators,
+    canManageInvoices,
+    canViewReports,
+    canViewCalendar,
+    canViewSettings,
+  } = useArtisanPermissions();
   
   // Force re-render when language changes
   const [, forceUpdate] = useState({});
@@ -29,7 +56,7 @@ export default function ArtisanDashboard() {
     };
   }, [i18n]);
 
-  // Fetch user subscription and plan features
+  // Fetch user subscription and plan features (for display purposes)
   const { data: userSubscription, isLoading: subscriptionLoading } = useQuery({
     queryKey: ["/api/mobile/user-subscription"],
     queryFn: () => apiRequest("GET", "/api/mobile/user-subscription").then(res => res.json()),
@@ -42,24 +69,16 @@ export default function ArtisanDashboard() {
     enabled: true
   });
 
-  // Get current user's plan features
+  // Get current user's plan features (for display)
   const currentPlan = userSubscription ? 
     subscriptionPlans?.find((plan: any) => plan.id === userSubscription.planId) : null;
   
   const planFeatures = currentPlan ? JSON.parse(currentPlan.features || '{}') : {};
 
-  // Get enabled features based on plan
-  const enabledFeatures = currentPlan ? Object.keys(planFeatures).filter(key => planFeatures[key] === true) : [];
-  
-  // Check if user has specific permissions - use correct feature names from plan
-  const hasClientPermission = enabledFeatures.includes('client_management');
-  const hasJobPermission = enabledFeatures.includes('job_management');
-  const hasCollaboratorPermission = enabledFeatures.includes('collaborator_management');
-  const hasInvoicePermission = enabledFeatures.includes('invoice_generation');
-  const hasReportPermission = enabledFeatures.includes('reports');
-  const hasSettingsPermission = planFeatures.permissions?.['settings.view'] === true;
-  const hasCalendarPermission = enabledFeatures.includes('calendar');
-  const hasProfilePermission = enabledFeatures.includes('profile') || enabledFeatures.includes('user_management');
+  // Get enabled features based on plan (for display)
+  const enabledFeatures = currentPlan ? Object.keys(planFeatures).filter(key => 
+    key !== 'permissions' && planFeatures[key] === true
+  ) : [];
 
   // Get current user data
   const { data: currentUser } = useQuery({
@@ -68,42 +87,37 @@ export default function ArtisanDashboard() {
     enabled: true
   });
 
-  // Navigation handler
+  // Navigation handler - use artisan paths
   const handleNavigation = (path: string) => {
-    // Redirect settings to user settings instead of admin settings
-    if (path === "settings") {
-      setLocation("/admin/user-settings");
-    } else {
-      setLocation(`/admin/${path}`);
-    }
+    setLocation(`/artisan/${path}`);
   };
 
-  // Real data from API calls - with permission checks
+  // Real data from API calls - ONLY fetch if user has permission
   const { data: clients, isLoading: clientsLoading, error: clientsError } = useQuery({
     queryKey: ["/api/mobile/clients"],
     queryFn: () => apiRequest("GET", "/api/mobile/clients").then(res => res.json()),
-    enabled: true,
+    enabled: canViewClients && !permissionsLoading,
     retry: false
   });
 
   const { data: jobs, isLoading: jobsLoading, error: jobsError } = useQuery({
     queryKey: ["/api/mobile/all-jobs"],
     queryFn: () => apiRequest("GET", "/api/mobile/all-jobs").then(res => res.json()),
-    enabled: true,
+    enabled: canViewJobs && !permissionsLoading,
     retry: false
   });
 
   const { data: collaborators, isLoading: collaboratorsLoading, error: collaboratorsError } = useQuery({
     queryKey: ["/api/mobile/collaborators"],
     queryFn: () => apiRequest("GET", "/api/mobile/collaborators").then(res => res.json()),
-    enabled: true,
+    enabled: canManageCollaborators && !permissionsLoading,
     retry: false
   });
 
   const { data: invoices, isLoading: invoicesLoading, error: invoicesError } = useQuery({
     queryKey: ["/api/mobile/invoices"],
     queryFn: () => apiRequest("GET", "/api/mobile/invoices").then(res => res.json()),
-    enabled: true,
+    enabled: canManageInvoices && !permissionsLoading,
     retry: false
   });
 
@@ -139,12 +153,15 @@ export default function ArtisanDashboard() {
     currentPlan,
     planFeatures,
     enabledFeatures,
-    hasClientPermission,
-    hasJobPermission,
-    hasCollaboratorPermission,
-    hasInvoicePermission,
-    hasReportPermission,
-    hasSettingsPermission,
+    permissions,
+    features,
+    canViewClients,
+    canViewJobs,
+    canManageCollaborators,
+    canManageInvoices,
+    canViewReports,
+    canViewCalendar,
+    canViewSettings,
     currentUser,
     clientsError,
     jobsError,
@@ -173,7 +190,7 @@ export default function ArtisanDashboard() {
           </div>
           <div className="flex items-center space-x-4">
             <LanguageSelector />
-            <Button variant="outline" onClick={() => setLocation("/admin/logout")}>
+            <Button variant="outline" onClick={() => setLocation("/artisan/logout")}>
               {t('common.logout')}
             </Button>
           </div>
@@ -265,28 +282,30 @@ export default function ArtisanDashboard() {
 
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Clients - Always visible */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{t('artisanDashboard.totalClients')}</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {clientsLoading ? (
-                  <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-                ) : (
-                  realStats.totalClients
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {clientsLoading ? t('common.loading') : `+2 ${t('artisanDashboard.thisMonth')}`}
-              </p>
-            </CardContent>
-          </Card>
+          {/* Clients - Based on permissions */}
+          {canViewClients && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">{t('artisanDashboard.totalClients')}</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {clientsLoading ? (
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                  ) : (
+                    realStats.totalClients
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {clientsLoading ? t('common.loading') : `+2 ${t('artisanDashboard.thisMonth')}`}
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
-          {/* Jobs - Based on plan features */}
-          {planFeatures.jobActivities !== false && (
+          {/* Jobs - Based on permissions */}
+          {canViewJobs && (
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">{t('artisanDashboard.activeJobs')}</CardTitle>
@@ -307,8 +326,8 @@ export default function ArtisanDashboard() {
             </Card>
           )}
 
-          {/* Revenue - Based on plan features */}
-          {planFeatures.invoicing !== false && (
+          {/* Revenue - Based on permissions */}
+          {canManageInvoices && (
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">{t('artisanDashboard.monthlyRevenue')}</CardTitle>
@@ -329,8 +348,8 @@ export default function ArtisanDashboard() {
             </Card>
           )}
 
-          {/* Collaborators - Based on plan features */}
-          {planFeatures.collaborators !== false && (
+          {/* Collaborators - Based on permissions */}
+          {canManageCollaborators && (
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">{t('artisanDashboard.collaboratorsActive')}</CardTitle>
@@ -362,8 +381,8 @@ export default function ArtisanDashboard() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {/* Clients - Based on plan features */}
-              {hasClientPermission && (
+              {/* Clients - Based on permissions */}
+              {canViewClients && (
                 <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleNavigation("clients")}>
                   <CardContent className="p-4 text-center">
                     <Users className="h-8 w-8 mx-auto mb-2 text-blue-600" />
@@ -373,8 +392,8 @@ export default function ArtisanDashboard() {
                 </Card>
               )}
 
-              {/* Jobs - Based on plan features */}
-              {hasJobPermission && (
+              {/* Jobs - Based on permissions */}
+              {canViewJobs && (
                 <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleNavigation("jobs")}>
                   <CardContent className="p-4 text-center">
                     <Briefcase className="h-8 w-8 mx-auto mb-2 text-green-600" />
@@ -384,8 +403,8 @@ export default function ArtisanDashboard() {
                 </Card>
               )}
 
-              {/* Collaborators - Based on plan features */}
-              {hasCollaboratorPermission && (
+              {/* Collaborators - Based on permissions */}
+              {canManageCollaborators && (
                 <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleNavigation("collaborators")}>
                   <CardContent className="p-4 text-center">
                     <User className="h-8 w-8 mx-auto mb-2 text-purple-600" />
@@ -395,8 +414,8 @@ export default function ArtisanDashboard() {
                 </Card>
               )}
 
-              {/* Invoices - Based on plan features */}
-              {hasInvoicePermission && (
+              {/* Invoices - Based on permissions */}
+              {canManageInvoices && (
                 <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleNavigation("invoices")}>
                   <CardContent className="p-4 text-center">
                     <FileText className="h-8 w-8 mx-auto mb-2 text-orange-600" />
@@ -406,8 +425,8 @@ export default function ArtisanDashboard() {
                 </Card>
               )}
 
-              {/* Calendar - Based on plan features */}
-              {hasCalendarPermission && (
+              {/* Calendar - Based on permissions */}
+              {canViewCalendar && (
                 <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleNavigation("calendar")}>
                   <CardContent className="p-4 text-center">
                     <Calendar className="h-8 w-8 mx-auto mb-2 text-red-600" />
@@ -417,8 +436,8 @@ export default function ArtisanDashboard() {
                 </Card>
               )}
 
-              {/* Reports - Based on plan features */}
-              {hasReportPermission && (
+              {/* Reports - Based on permissions */}
+              {canViewReports && (
                 <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleNavigation("reports")}>
                   <CardContent className="p-4 text-center">
                     <PieChart className="h-8 w-8 mx-auto mb-2 text-indigo-600" />
@@ -428,24 +447,13 @@ export default function ArtisanDashboard() {
                 </Card>
               )}
 
-              {/* Settings - Based on plan features */}
-              {hasSettingsPermission && (
+              {/* Settings - Based on permissions */}
+              {canViewSettings && (
                 <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleNavigation("settings")}>
                   <CardContent className="p-4 text-center">
                     <Settings className="h-8 w-8 mx-auto mb-2 text-gray-600" />
                     <p className="font-medium">{t('artisanDashboard.settings')}</p>
                     <p className="text-sm text-gray-500">{t('artisanDashboard.configureSystem')}</p>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Profile - Based on plan features */}
-              {hasProfilePermission && (
-                <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleNavigation("profile")}>
-                  <CardContent className="p-4 text-center">
-                    <Award className="h-8 w-8 mx-auto mb-2 text-yellow-600" />
-                    <p className="font-medium">{t('artisanDashboard.profile')}</p>
-                    <p className="text-sm text-gray-500">{t('artisanDashboard.companyData')}</p>
                   </CardContent>
                 </Card>
               )}
@@ -455,8 +463,8 @@ export default function ArtisanDashboard() {
 
         {/* Recent Activity */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Recent Jobs - Based on plan features */}
-          {planFeatures.jobActivities !== false && (
+          {/* Recent Jobs - Based on permissions */}
+          {canViewJobs && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -517,8 +525,9 @@ export default function ArtisanDashboard() {
             </Card>
           )}
 
-          {/* Recent Clients */}
-          <Card>
+          {/* Recent Clients - Based on permissions */}
+          {canViewClients && (
+            <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
@@ -562,6 +571,7 @@ export default function ArtisanDashboard() {
               )}
             </CardContent>
           </Card>
+          )}
         </div>
       </div>
     </div>

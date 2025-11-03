@@ -140,10 +140,25 @@ function Router() {
       <Route path="/admin/dashboard" component={AdminDashboard} />
       <Route path="/admin/subscription-plans" component={AdminSubscriptionPlansPage} />
       
-      {/* Artisan Dashboard - accessible to all authenticated users */}
+      {/* Artisan Routes - separate from admin */}
+      <Route path="/artisan/login" component={AdminLoginPage} />
+      <Route path="/artisan/dashboard" component={ArtisanDashboard} />
+      
+      {/* Keep old route for backward compatibility */}
       <Route path="/admin/artisan-dashboard" component={ArtisanDashboard} />
       
-      {/* Rotte Artisan Dashboard */}
+      {/* Artisan pages - separate from admin */}
+      <Route path="/artisan/clients" component={ClientsPage} />
+      <Route path="/artisan/jobs" component={JobsPage} />
+      <Route path="/artisan/collaborators" component={CollaboratorsPage} />
+      <Route path="/artisan/calendar" component={CalendarPage} />
+      <Route path="/artisan/profile" component={ProfilePage} />
+      <Route path="/artisan/reports" component={ReportsPage} />
+      <Route path="/artisan/settings" component={UserSettingsPage} />
+      <Route path="/artisan/client/:id" component={AdminClientDetailsPage} />
+      <Route path="/artisan/logout" component={AdminLogout} />
+      
+      {/* Admin routes (for superadmin) */}
       <Route path="/admin/clients" component={ClientsPage} />
       <Route path="/admin/jobs" component={JobsPage} />
       <Route path="/admin/collaborators" component={CollaboratorsPage} />

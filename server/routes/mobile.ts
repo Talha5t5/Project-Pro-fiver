@@ -1373,21 +1373,21 @@ router.get("/today-appointments", async (req: Request, res: Response) => {
 });
 
 // CLIENTS ROUTES
-router.get("/clients", 
-  requireFeature('client_management'),
-  requirePageAccess('clients', 'view'),
-  filterResponseByPlan('clients'),
-  addPlanInfo(),
-  async (req: Request, res: Response) => {
-    try {
-      const clients = await storage.getClients();
-      return res.json(clients);
-    } catch (err) {
-      console.error("Errore nell'ottenere i clienti:", err);
-      res.status(500).json({ error: "Errore nel server" });
+router.get("/clients", async (req: Request, res: Response) => {
+  try {
+    // Check mobile session authentication
+    const mobileSessionId = req.headers['x-mobile-session-id'] as string;
+    if (!mobileSessionId || !global.mobileSessions || !global.mobileSessions[mobileSessionId]) {
+      return res.status(401).json({ error: "Non autenticato" });
     }
+    
+    const clients = await storage.getClients();
+    return res.json(clients);
+  } catch (err) {
+    console.error("Errore nell'ottenere i clienti:", err);
+    res.status(500).json({ error: "Errore nel server" });
   }
-);
+});
 
 router.get("/clients/:id", async (req: Request, res: Response) => {
   try {

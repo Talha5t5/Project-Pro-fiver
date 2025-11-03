@@ -7,8 +7,20 @@ import { PlanEnforcementService } from '../services/planEnforcement';
 export const requireFeature = (featureId: string) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const userId = (req.session as any).userId;
+      // Check for BOTH Express session AND mobile session
+      let userId: number | undefined = (req.session as any).userId;
+      
+      // If no Express session, check for mobile session
+      if (!userId && req.headers['x-mobile-session-id']) {
+        const mobileSessionId = req.headers['x-mobile-session-id'] as string;
+        if (global.mobileSessions && global.mobileSessions[mobileSessionId]) {
+          userId = global.mobileSessions[mobileSessionId];
+          console.log(`✅ requireFeature('${featureId}'): Mobile session authenticated, userId=${userId}`);
+        }
+      }
+      
       if (!userId) {
+        console.log(`❌ requireFeature('${featureId}'): No userId found`);
         return res.status(401).json({ error: 'Non autenticato' });
       }
 
@@ -35,7 +47,17 @@ export const requireFeature = (featureId: string) => {
 export const requirePageAccess = (pageId: string, requiredAccess: 'view' | 'edit' = 'view') => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const userId = (req.session as any).userId;
+      // Check for BOTH Express session AND mobile session
+      let userId: number | undefined = (req.session as any).userId;
+      
+      // If no Express session, check for mobile session
+      if (!userId && req.headers['x-mobile-session-id']) {
+        const mobileSessionId = req.headers['x-mobile-session-id'] as string;
+        if (global.mobileSessions && global.mobileSessions[mobileSessionId]) {
+          userId = global.mobileSessions[mobileSessionId];
+        }
+      }
+      
       if (!userId) {
         return res.status(401).json({ error: 'Non autenticato' });
       }
@@ -72,7 +94,17 @@ export const requirePageAccess = (pageId: string, requiredAccess: 'view' | 'edit
 export const requirePermission = (permissionId: string) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const userId = (req.session as any).userId;
+      // Check for BOTH Express session AND mobile session
+      let userId: number | undefined = (req.session as any).userId;
+      
+      // If no Express session, check for mobile session
+      if (!userId && req.headers['x-mobile-session-id']) {
+        const mobileSessionId = req.headers['x-mobile-session-id'] as string;
+        if (global.mobileSessions && global.mobileSessions[mobileSessionId]) {
+          userId = global.mobileSessions[mobileSessionId];
+        }
+      }
+      
       if (!userId) {
         return res.status(401).json({ error: 'Non autenticato' });
       }
@@ -100,7 +132,17 @@ export const requirePermission = (permissionId: string) => {
 export const checkFeatureLimit = (feature: string) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const userId = (req.session as any).userId;
+      // Check for BOTH Express session AND mobile session
+      let userId: number | undefined = (req.session as any).userId;
+      
+      // If no Express session, check for mobile session
+      if (!userId && req.headers['x-mobile-session-id']) {
+        const mobileSessionId = req.headers['x-mobile-session-id'] as string;
+        if (global.mobileSessions && global.mobileSessions[mobileSessionId]) {
+          userId = global.mobileSessions[mobileSessionId];
+        }
+      }
+      
       if (!userId) {
         return res.status(401).json({ error: 'Non autenticato' });
       }
@@ -129,7 +171,17 @@ export const checkFeatureLimit = (feature: string) => {
 export const filterResponseByPlan = (entity: string) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const userId = (req.session as any).userId;
+      // Check for BOTH Express session AND mobile session
+      let userId: number | undefined = (req.session as any).userId;
+      
+      // If no Express session, check for mobile session
+      if (!userId && req.headers['x-mobile-session-id']) {
+        const mobileSessionId = req.headers['x-mobile-session-id'] as string;
+        if (global.mobileSessions && global.mobileSessions[mobileSessionId]) {
+          userId = global.mobileSessions[mobileSessionId];
+        }
+      }
+      
       if (!userId) {
         return next();
       }
@@ -172,7 +224,17 @@ export const filterResponseByPlan = (entity: string) => {
 export const addPlanInfo = () => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const userId = (req.session as any).userId;
+      // Check for BOTH Express session AND mobile session
+      let userId: number | undefined = (req.session as any).userId;
+      
+      // If no Express session, check for mobile session
+      if (!userId && req.headers['x-mobile-session-id']) {
+        const mobileSessionId = req.headers['x-mobile-session-id'] as string;
+        if (global.mobileSessions && global.mobileSessions[mobileSessionId]) {
+          userId = global.mobileSessions[mobileSessionId];
+        }
+      }
+      
       if (!userId) {
         return next();
       }
