@@ -8,8 +8,8 @@ const isMobileDevice = () => {
 };
 
 const MOBILE_API_BASE_URL = isMobileDevice() 
-  ? 'http://localhost:3000'  // Use localhost for development
-  : 'http://localhost:3000';        // Use localhost for development
+  ? 'https://artigianofast.com'  // Use localhost for development
+  : 'https://artigianofast.com';        // Use localhost for development
 
 
 // Global fetch interceptor to catch ALL API calls

@@ -287,7 +287,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               currency: 'eur',
               payment_method: paymentMethod.id,
               confirm: true,
-              return_url: `${process.env.APP_URL || 'http://localhost:3000'}/desktop/payment-success`,
+              return_url: `${process.env.APP_URL || 'https://artigianofast.com'}/desktop/payment-success`,
               metadata: {
                 email: email,
                 planId: planId.toString(),
@@ -877,7 +877,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const newCollaborator = await storage.createCollaborator({ ...collaboratorData, activationToken });
 
       try {
-        const baseUrl = process.env.APP_PUBLIC_URL || "http://localhost:3000";
+        const baseUrl = process.env.APP_PUBLIC_URL || "https://artigianofast.com";
         const activationUrl = `${baseUrl}/activate?token=${activationToken}`;
         const { notifyCollaboratorActivation } = await import("./services/notifications");
         await notifyCollaboratorActivation(newCollaborator as any, activationUrl);

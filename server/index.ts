@@ -16,7 +16,7 @@ const app = express();
 app.use(cors({
   origin: [
     'http://localhost', 
-    'http://localhost:3000', 
+    'https://artigianofast.com', 
     'http://192.168.100.183:3000',
     'http://10.103.181.15:3000',
     'capacitor://localhost', 

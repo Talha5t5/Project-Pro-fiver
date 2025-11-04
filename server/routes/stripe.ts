@@ -26,7 +26,7 @@ router.post('/create-payment-intent', async (req, res) => {
       payment_method: paymentMethodId,
       confirmation_method: 'manual',
       confirm: true,
-      return_url: `${process.env.APP_URL || 'http://localhost:3000'}/mobile/payment-success`,
+      return_url: `${process.env.APP_URL || 'https://artigianofast.com'}/mobile/payment-success`,
       metadata: {
         source: 'mobile_app'
       }
